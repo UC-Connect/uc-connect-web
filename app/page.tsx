@@ -170,6 +170,20 @@ function mapTaskRow(row: TaskRow): Task {
   };
 }
 
+function getUserName(user: User | null) {
+  if (!user?.email) return "未登录用户";
+  return String(user.user_metadata?.display_name ?? user.email.split("@")[0]);
+}
+
+function getUserInitials(user: User | null) {
+  if (!user?.email) return "UC";
+  return getUserName(user).slice(0, 2).toUpperCase();
+}
+
+function getUserSchool(user: User | null) {
+  return String(user?.user_metadata?.school ?? "UC Student");
+}
+
 export default function Home() {
   const [view, setView] = useState<"home" | "publish" | "mine" | "profile">("home");
   const [school, setSchool] = useState("全部 UC");
@@ -241,6 +255,23 @@ export default function Home() {
     setSelectedTask(null);
     setPublished(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function openProfile() {
+    if (!user) {
+      setShowLogin(true);
+      return;
+    }
+
+    navigate("profile");
+  }
+
+  async function signOut() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setUser(null);
+    navigate("home");
+    flash("已退出登录");
   }
 
   async function signInWithPassword(event: FormEvent<HTMLFormElement>) {
@@ -402,7 +433,7 @@ export default function Home() {
           <div className="header-actions">
             <button className="ghost-button" onClick={() => user ? flash(`已登录：${user.email}`) : setShowLogin(true)}>{user ? "已登录" : "登录"}</button>
             <button className="primary-button small" onClick={() => navigate("publish")}>＋ 发布需求</button>
-            <button className="profile-button" onClick={() => navigate("profile")} aria-label="打开个人主页">ZY</button>
+            <button className="profile-button" onClick={openProfile} aria-label="打开个人主页">{getUserInitials(user)}</button>
           </div>
         </div>
       </header>
@@ -592,15 +623,15 @@ export default function Home() {
 
       {view === "profile" && (
         <section className="app-page profile-page">
-          <div className="profile-hero"><div className="profile-avatar">ZY</div><div><span className="verified-pill">✓ UC 邮箱已认证</span><h1>Ziqing Yuan</h1><p>UC Berkeley · Applied Mathematics</p></div><button className="ghost-outline" onClick={() => flash("个人资料编辑已打开（Demo）")}>编辑资料</button></div>
+          <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><button className="ghost-outline" onClick={signOut}>退出登录</button></div>
           <div className="profile-layout">
-            <aside className="profile-sidebar"><h3>个人简介</h3><p>喜欢把校园里的信息和资源整理得更清楚。愿意分享转学、选课和湾区生活经验。</p><dl><div><dt>加入时间</dt><dd>2026 年 8 月</dd></div><div><dt>常用语言</dt><dd>中文 · English</dd></div><div><dt>所在校区</dt><dd>UC Berkeley</dd></div></dl></aside>
+            <aside className="profile-sidebar"><h3>个人简介</h3><p>这里会显示当前登录用户的个人资料。MVP 阶段先根据邮箱自动生成基础信息。</p><dl><div><dt>账号邮箱</dt><dd>{user?.email}</dd></div><div><dt>常用语言</dt><dd>中文 · English</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
             <div className="profile-content"><div className="profile-stats"><div><strong>7</strong><span>完成任务</span></div><div><strong>4.9</strong><span>平均评分</span></div><div><strong>100%</strong><span>完成率</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>共 5 条</span></div><article><div><i>MC</i><span><strong>Mia Chen</strong><small>校园信息 · 7 月 28 日</small></span><b>★★★★★</b></div><p>回复很快，讲得也很清楚，还补充了很多我没想到的细节。</p></article><article><div><i>KH</i><span><strong>Kevin H.</strong><small>新生落地 · 7 月 16 日</small></span><b>★★★★★</b></div><p>非常靠谱，时间也安排得很准。谢谢！</p></article></div></div>
           </div>
         </section>
       )}
 
-      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => navigate("mine")}><span>▤</span>任务</button><button className="mobile-add" onClick={() => navigate("publish")}>＋</button><button onClick={() => flash("你暂时没有新消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={() => navigate("profile")}><span>○</span>我的</button></nav>
+      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => user ? navigate("mine") : setShowLogin(true)}><span>▤</span>任务</button><button className="mobile-add" onClick={() => navigate("publish")}>＋</button><button onClick={() => flash("你暂时没有新消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>我的</button></nav>
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
