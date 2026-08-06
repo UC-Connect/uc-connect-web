@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase, TaskRow } from "@/lib/supabase";
 
 type Task = {
-  id: number;
+  id: string;
+  authorId?: string;
   title: string;
   school: "UCB" | "UCSD" | "UCLA";
   category: string;
@@ -20,9 +23,9 @@ type Task = {
   tone: string;
 };
 
-const tasks: Task[] = [
+const demoTasks: Task[] = [
   {
-    id: 1,
+    id: "demo-1",
     title: "帮忙实拍 Blackwell Hall 宿舍公共区域",
     school: "UCB",
     category: "校园实拍",
@@ -39,7 +42,7 @@ const tasks: Task[] = [
     tone: "blue",
   },
   {
-    id: 2,
+    id: "demo-2",
     title: "想咨询 Math-CS 转 Data Science 的选课规划",
     school: "UCSD",
     category: "经验咨询",
@@ -56,7 +59,7 @@ const tasks: Task[] = [
     tone: "teal",
   },
   {
-    id: 3,
+    id: "demo-3",
     title: "新生到校，求一起熟悉 Westwood 周边",
     school: "UCLA",
     category: "新生落地",
@@ -73,7 +76,7 @@ const tasks: Task[] = [
     tone: "gold",
   },
   {
-    id: 4,
+    id: "demo-4",
     title: "借一个 TI-84 计算器参加周五考试",
     school: "UCB",
     category: "校园互助",
@@ -90,7 +93,7 @@ const tasks: Task[] = [
     tone: "violet",
   },
   {
-    id: 5,
+    id: "demo-5",
     title: "请分享一次 UCLA 校内研究申请经验",
     school: "UCLA",
     category: "经验咨询",
@@ -107,7 +110,7 @@ const tasks: Task[] = [
     tone: "coral",
   },
   {
-    id: 6,
+    id: "demo-6",
     title: "求帮忙确认 Sixth College 附近自行车停车位",
     school: "UCSD",
     category: "校园信息",
@@ -125,13 +128,54 @@ const tasks: Task[] = [
   },
 ];
 
-const categories = ["全部任务", "校园实拍", "新生落地", "经验咨询", "校园互助"];
+const categories = ["全部任务", "校园实拍", "新生落地", "经验咨询", "校园互助", "校园信息"];
+
+function formatReward(task: Pick<TaskRow, "reward_amount" | "reward_type">) {
+  if (task.reward_type === "mutual_help") return "免费互助";
+  return task.reward_amount === null ? "$0" : `$${Number(task.reward_amount).toFixed(0)}`;
+}
+
+function formatRelativeTime(value: string) {
+  const created = new Date(value).getTime();
+  const diffMinutes = Math.max(1, Math.round((Date.now() - created) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes} 分钟前`;
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} 小时前`;
+  return `${Math.round(diffHours / 24)} 天前`;
+}
+
+function formatDueDate(value: string | null) {
+  if (!value) return "时间待定";
+  return new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+function mapTaskRow(row: TaskRow): Task {
+  return {
+    id: row.id,
+    authorId: row.author_id,
+    title: row.title,
+    school: row.school,
+    category: row.category,
+    mode: row.mode,
+    reward: formatReward(row),
+    time: formatRelativeTime(row.created_at),
+    applicants: row.applications_count,
+    author: row.profiles?.display_name ?? "UC Student",
+    verified: row.profiles?.verified_uc_email ?? false,
+    avatar: row.profiles?.avatar_initials ?? "UC",
+    description: row.description,
+    location: row.location,
+    due: formatDueDate(row.due_date),
+    tone: row.school === "UCB" ? "blue" : row.school === "UCSD" ? "teal" : "gold",
+  };
+}
 
 export default function Home() {
   const [view, setView] = useState<"home" | "publish" | "mine" | "profile">("home");
   const [school, setSchool] = useState("全部 UC");
   const [category, setCategory] = useState("全部任务");
   const [query, setQuery] = useState("");
+  const [tasks, setTasks] = useState<Task[]>(demoTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showApply, setShowApply] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -139,13 +183,53 @@ export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [published, setPublished] = useState(false);
   const [mineTab, setMineTab] = useState<"posted" | "applied">("posted");
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  const [lastPublishedTask, setLastPublishedTask] = useState<Task | null>(null);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    loadTasks();
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const schoolMatch = school === "全部 UC" || task.school === school;
     const categoryMatch = category === "全部任务" || task.category === category;
     const queryMatch = task.title.toLowerCase().includes(query.toLowerCase()) || task.category.includes(query);
     return schoolMatch && categoryMatch && queryMatch;
-  }), [school, category, query]);
+  }), [tasks, school, category, query]);
+
+  const postedTasks = useMemo(() => {
+    if (!user) return tasks.slice(0, 3);
+    return tasks.filter((task) => task.authorId === user.id);
+  }, [tasks, user]);
+
+  async function loadTasks() {
+    if (!supabase) return;
+    setIsLoadingTasks(true);
+    const { data, error } = await supabase
+      .from("tasks")
+      .select("*, profiles(display_name, avatar_initials, verified_uc_email)")
+      .eq("status", "open")
+      .order("created_at", { ascending: false });
+
+    setIsLoadingTasks(false);
+
+    if (error) {
+      flash("读取数据库失败，已显示 Demo 数据");
+      return;
+    }
+
+    setTasks(((data ?? []) as TaskRow[]).map(mapTaskRow));
+  }
 
   function flash(message: string) {
     setNotice(message);
@@ -157,6 +241,110 @@ export default function Home() {
     setSelectedTask(null);
     setPublished(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function sendLoginLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+
+    if (!supabase) {
+      flash("请先配置 Supabase 环境变量");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+
+    if (error) {
+      flash(error.message);
+      return;
+    }
+
+    setShowLogin(false);
+    flash("验证邮件已发送");
+  }
+
+  async function handlePublish(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+
+    if (!supabase || !user) {
+      flash("请先登录后再发布需求");
+      setShowLogin(true);
+      return;
+    }
+
+    const rewardType = String(form.get("reward_type"));
+    const rewardAmount = Number(form.get("reward_amount") || 0);
+    const payload = {
+      author_id: user.id,
+      title: String(form.get("title")),
+      description: String(form.get("description")),
+      school: String(form.get("school")) as Task["school"],
+      category: String(form.get("category")),
+      mode: String(form.get("mode")) as "线上" | "线下",
+      reward_type: rewardType,
+      reward_amount: rewardType === "paid" ? rewardAmount : null,
+      location: String(form.get("location")),
+      due_date: String(form.get("due_date")) || null,
+    };
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .insert(payload)
+      .select("*, profiles(display_name, avatar_initials, verified_uc_email)")
+      .single();
+
+    if (error) {
+      flash(error.message);
+      return;
+    }
+
+    const newTask = mapTaskRow(data as TaskRow);
+    setTasks((current) => [newTask, ...current]);
+    setLastPublishedTask(newTask);
+    setPublished(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handleApply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedTask) return;
+
+    if (!supabase || !user) {
+      flash("请先登录后再申请任务");
+      setShowLogin(true);
+      return;
+    }
+
+    if (selectedTask.authorId === user.id) {
+      flash("不能申请自己发布的任务");
+      return;
+    }
+
+    const form = new FormData(event.currentTarget);
+    const { error } = await supabase.from("applications").insert({
+      task_id: selectedTask.id,
+      applicant_id: user.id,
+      message: String(form.get("message")),
+      available_time: String(form.get("available_time")),
+    });
+
+    if (error) {
+      flash(error.code === "23505" ? "你已经申请过这个任务" : error.message);
+      return;
+    }
+
+    setApplied(true);
+    setShowApply(false);
+    setTasks((current) => current.map((task) => (
+      task.id === selectedTask.id ? { ...task, applicants: task.applicants + 1 } : task
+    )));
   }
 
   return (
@@ -173,7 +361,7 @@ export default function Home() {
             <button onClick={() => flash("你暂时没有新消息")}>消息</button>
           </nav>
           <div className="header-actions">
-            <button className="ghost-button" onClick={() => setShowLogin(true)}>登录</button>
+            <button className="ghost-button" onClick={() => user ? flash(`已登录：${user.email}`) : setShowLogin(true)}>{user ? "已登录" : "登录"}</button>
             <button className="primary-button small" onClick={() => navigate("publish")}>＋ 发布需求</button>
             <button className="profile-button" onClick={() => navigate("profile")} aria-label="打开个人主页">ZY</button>
           </div>
@@ -199,17 +387,17 @@ export default function Home() {
               </div>
               <div className="hero-board" aria-label="热门任务预览">
                 <div className="board-top"><span>刚刚发布</span><span className="live-dot">实时更新</span></div>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[0])}>
+                <button className="feature-task" onClick={() => setSelectedTask(tasks[0] ?? demoTasks[0])}>
                   <div className="task-icon blue">⌁</div>
                   <div><span className="mini-label">UCB · 校园实拍</span><h3>帮忙实拍 Blackwell Hall</h3><p>12 分钟前 · 3 人申请</p></div>
                   <strong>$25</strong>
                 </button>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[1])}>
+                <button className="feature-task" onClick={() => setSelectedTask(tasks[1] ?? demoTasks[1])}>
                   <div className="task-icon teal">◎</div>
                   <div><span className="mini-label">UCSD · 线上咨询</span><h3>Math-CS 转专业选课规划</h3><p>28 分钟前 · 5 人申请</p></div>
                   <strong>$18</strong>
                 </button>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[2])}>
+                <button className="feature-task" onClick={() => setSelectedTask(tasks[2] ?? demoTasks[2])}>
                   <div className="task-icon gold">✦</div>
                   <div><span className="mini-label">UCLA · 新生落地</span><h3>一起熟悉 Westwood 周边</h3><p>1 小时前 · 2 人申请</p></div>
                   <strong className="free">互助</strong>
@@ -233,6 +421,7 @@ export default function Home() {
               <label className="search-box"><span>⌕</span><input aria-label="搜索任务" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索任务" /></label>
             </div>
             <div className="task-grid">
+              {isLoadingTasks && <div className="empty-state"><span>⌕</span><h3>正在读取任务</h3><p>连接 Supabase 数据库中。</p></div>}
               {filtered.map((task) => (
                 <button className="task-card" key={task.id} onClick={() => { setSelectedTask(task); window.scrollTo(0, 0); }}>
                   <div className="card-meta"><span className={`school-badge ${task.school.toLowerCase()}`}>{task.school}</span><span>{task.time}</span></div>
@@ -280,9 +469,9 @@ export default function Home() {
               <hr />
               <div className="apply-stat"><span>已有申请</span><b>{selectedTask.applicants} 人</b></div>
               {!showApply && !applied && <button className="primary-button wide" onClick={() => setShowApply(true)}>申请接取</button>}
-              {showApply && !applied && <form onSubmit={(event) => { event.preventDefault(); setApplied(true); setShowApply(false); }} className="apply-form">
-                <label>申请说明<textarea required placeholder="介绍一下你为什么适合，以及可以完成的时间…" /></label>
-                <label>可完成时间<input required placeholder="例如：周三下午" /></label>
+              {showApply && !applied && <form onSubmit={handleApply} className="apply-form">
+                <label>申请说明<textarea required name="message" placeholder="介绍一下你为什么适合，以及可以完成的时间…" /></label>
+                <label>可完成时间<input required name="available_time" placeholder="例如：周三下午" /></label>
                 <button className="primary-button wide" type="submit">提交申请</button>
                 <button className="text-button wide" type="button" onClick={() => setShowApply(false)}>取消</button>
               </form>}
@@ -302,37 +491,37 @@ export default function Home() {
             <p>描述得越清楚，越容易找到合适的同学。</p>
           </div>
           {!published ? (
-            <form className="publish-form" onSubmit={(event) => { event.preventDefault(); setPublished(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+            <form className="publish-form" onSubmit={handlePublish}>
               <div className="form-section">
                 <span className="form-step">01</span><div><h2>基本信息</h2><p>先让大家一眼看懂你需要什么。</p></div>
                 <div className="form-fields full-row">
-                  <label className="field-wide">需求标题<input required placeholder="例如：帮忙实拍宿舍公共区域" /></label>
-                  <label>任务类别<select required defaultValue=""><option value="" disabled>请选择</option><option>校园实拍</option><option>新生落地</option><option>经验咨询</option><option>校园互助</option></select></label>
-                  <label>所属学校<select required defaultValue="UCB"><option>UCB</option><option>UCSD</option><option>UCLA</option></select></label>
-                  <label className="field-wide">详细说明<textarea required placeholder="具体需要做什么？有没有特别需要注意的地方？" /></label>
+                  <label className="field-wide">需求标题<input required name="title" placeholder="例如：帮忙实拍宿舍公共区域" /></label>
+                  <label>任务类别<select required name="category" defaultValue=""><option value="" disabled>请选择</option><option>校园实拍</option><option>新生落地</option><option>经验咨询</option><option>校园互助</option><option>校园信息</option></select></label>
+                  <label>所属学校<select required name="school" defaultValue="UCB"><option>UCB</option><option>UCSD</option><option>UCLA</option></select></label>
+                  <label className="field-wide">详细说明<textarea required name="description" placeholder="具体需要做什么？有没有特别需要注意的地方？" /></label>
                 </div>
               </div>
               <div className="form-section">
                 <span className="form-step">02</span><div><h2>时间与地点</h2><p>告诉申请者在哪里、什么时候完成。</p></div>
                 <div className="form-fields full-row">
-                  <label>任务形式<select><option>线下</option><option>线上</option></select></label>
+                  <label>任务形式<select name="mode"><option>线下</option><option>线上</option></select></label>
                   <label>任务范围<select><option>本校学生</option><option>所有 UC 学生</option></select></label>
-                  <label>地点<input required placeholder="例如：Blackwell Hall" /></label>
-                  <label>希望完成时间<input required type="date" defaultValue="2026-08-08" /></label>
+                  <label>地点<input required name="location" placeholder="例如：Blackwell Hall" /></label>
+                  <label>希望完成时间<input required name="due_date" type="date" defaultValue="2026-08-08" /></label>
                 </div>
               </div>
               <div className="form-section">
                 <span className="form-step">03</span><div><h2>报酬说明</h2><p>Demo 只展示金额，不处理真实付款。</p></div>
                 <div className="form-fields full-row">
-                  <label>需求类型<select><option>有偿任务</option><option>免费互助</option></select></label>
-                  <label>报酬金额<div className="money-input"><span>$</span><input required type="number" min="0" placeholder="25" /></div></label>
+                  <label>需求类型<select name="reward_type"><option value="paid">有偿任务</option><option value="mutual_help">免费互助</option></select></label>
+                  <label>报酬金额<div className="money-input"><span>$</span><input required name="reward_amount" type="number" min="0" placeholder="25" /></div></label>
                 </div>
               </div>
               <label className="agreement"><input required type="checkbox" /> 我确认该需求不涉及代写、代考、换汇、违法服务或其他平台禁止内容。</label>
               <div className="form-actions"><button type="button" className="ghost-outline" onClick={() => navigate("home")}>保存草稿</button><button className="primary-button" type="submit">预览并发布 →</button></div>
             </form>
           ) : (
-            <div className="publish-success"><span>✓</span><h2>需求已发布</h2><p>你的任务现在会出现在对应校园的任务流中。</p><div className="preview-ticket"><span className="school-badge ucb">UCB</span><h3>帮忙实拍宿舍公共区域</h3><small>刚刚 · 等待第一位申请者</small></div><button className="primary-button" onClick={() => navigate("mine")}>前往我的任务</button><button className="text-button" onClick={() => navigate("home")}>返回首页</button></div>
+            <div className="publish-success"><span>✓</span><h2>需求已发布</h2><p>你的任务现在会出现在对应校园的任务流中。</p><div className="preview-ticket"><span className={`school-badge ${(lastPublishedTask?.school ?? "UCB").toLowerCase()}`}>{lastPublishedTask?.school ?? "UCB"}</span><h3>{lastPublishedTask?.title ?? "新的校园需求"}</h3><small>刚刚 · 等待第一位申请者</small></div><button className="primary-button" onClick={() => navigate("mine")}>前往我的任务</button><button className="text-button" onClick={() => navigate("home")}>返回首页</button></div>
           )}
         </section>
       )}
@@ -340,22 +529,23 @@ export default function Home() {
       {view === "mine" && (
         <section className="app-page mine-page">
           <div className="page-intro compact"><span className="section-kicker">MY TASKS</span><h1>我的任务</h1><p>在这里跟进你发布和申请的所有需求。</p></div>
-          <div className="mine-tabs"><button className={mineTab === "posted" ? "active" : ""} onClick={() => setMineTab("posted")}>我发布的 <b>3</b></button><button className={mineTab === "applied" ? "active" : ""} onClick={() => setMineTab("applied")}>我申请的 <b>2</b></button></div>
+          <div className="mine-tabs"><button className={mineTab === "posted" ? "active" : ""} onClick={() => setMineTab("posted")}>我发布的 <b>{postedTasks.length}</b></button><button className={mineTab === "applied" ? "active" : ""} onClick={() => setMineTab("applied")}>我申请的 <b>2</b></button></div>
           {mineTab === "posted" ? (
             <div className="dashboard-layout">
-              <div className="status-cards"><div><span>招募中</span><strong>2</strong><small>共 7 份申请</small></div><div><span>进行中</span><strong>1</strong><small>等待双方完成</small></div><div><span>本月完成</span><strong>4</strong><small>平均评分 4.9</small></div></div>
+              <div className="status-cards"><div><span>招募中</span><strong>{postedTasks.length}</strong><small>共 {postedTasks.reduce((sum, task) => sum + task.applicants, 0)} 份申请</small></div><div><span>进行中</span><strong>0</strong><small>等待双方完成</small></div><div><span>本月完成</span><strong>0</strong><small>MVP 数据开始记录</small></div></div>
               <div className="task-table">
                 <div className="table-title"><h2>最近发布</h2><button onClick={() => navigate("publish")}>＋ 新需求</button></div>
-                <div className="task-row"><span className="status open">招募中</span><div><strong>帮忙实拍 Blackwell Hall 宿舍公共区域</strong><small>UCB · 校园实拍 · 3 份申请</small></div><b>$25</b><button onClick={() => { navigate("home"); setSelectedTask(tasks[0]); }}>查看 →</button></div>
-                <div className="task-row"><span className="status progress">进行中</span><div><strong>咨询 Math-CS 转 Data Science 的规划</strong><small>UCSD · 经验咨询 · 已匹配 Eason L.</small></div><b>$18</b><button onClick={() => flash("已提醒对方确认进度")}>跟进 →</button></div>
-                <div className="task-row"><span className="status open">招募中</span><div><strong>一起熟悉 Westwood 周边</strong><small>UCLA · 新生落地 · 2 份申请</small></div><b>互助</b><button onClick={() => { navigate("home"); setSelectedTask(tasks[2]); }}>查看 →</button></div>
+                {postedTasks.map((task) => (
+                  <div className="task-row" key={task.id}><span className="status open">招募中</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看 →</button></div>
+                ))}
+                {postedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>还没有发布任务</h3><p>发布第一个需求后，会显示在这里。</p></div>}
               </div>
             </div>
           ) : (
             <div className="task-table applied-table">
               <div className="table-title"><h2>申请记录</h2><span>状态有变化时会收到提醒</span></div>
               <div className="task-row"><span className="status progress">已接受</span><div><strong>借一个 TI-84 计算器参加周五考试</strong><small>UCB · 周五 10:00 前 · 发布者 Jason Y.</small></div><b>$10</b><button onClick={() => flash("联系方式将在双方确认后显示")}>查看 →</button></div>
-              <div className="task-row"><span className="status waiting">等待回复</span><div><strong>请分享一次 UCLA 校内研究申请经验</strong><small>UCLA · 线上 · 申请于 2 小时前</small></div><b>$20</b><button onClick={() => { navigate("home"); setSelectedTask(tasks[4]); }}>查看 →</button></div>
+              <div className="task-row"><span className="status waiting">等待回复</span><div><strong>请分享一次 UCLA 校内研究申请经验</strong><small>UCLA · 线上 · 申请于 2 小时前</small></div><b>$20</b><button onClick={() => { navigate("home"); setSelectedTask(tasks[4] ?? demoTasks[4]); }}>查看 →</button></div>
             </div>
           )}
         </section>
@@ -375,7 +565,7 @@ export default function Home() {
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
-      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => { setShowLogin(false); flash("Demo 登录成功"); }}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><label>邮箱地址<input placeholder="name@berkeley.edu" type="email" /></label><button className="primary-button wide" onClick={() => { setShowLogin(false); flash("验证邮件已发送（Demo）"); }}>发送登录链接</button><small>使用学校邮箱登录可获得 UC 认证标志</small></section></div>}
+      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("MVP 先使用邮箱登录，Google 可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={sendLoginLink}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><button className="primary-button wide" type="submit">发送登录链接</button></form><small>使用学校邮箱登录可获得 UC 认证标志</small></section></div>}
     </main>
   );
 }

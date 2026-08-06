@@ -52,6 +52,50 @@ npm run dev
 
 Open the local URL shown in your terminal, usually http://localhost:3000.
 
+Supabase MVP Setup
+
+The app can still render demo data without Supabase, but the MVP flow uses Supabase for login, tasks, and applications.
+
+1. Create a Supabase project.
+
+2. Open the Supabase SQL editor and run:
+
+```sql
+-- paste and run supabase/schema.sql
+```
+
+3. Copy `.env.example` to `.env.local` and fill in:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+4. Install the new Supabase client dependency:
+
+```bash
+npm install
+```
+
+5. Start the app:
+
+```bash
+npm run dev
+```
+
+MVP Flow
+
+The current MVP supports:
+
+- Email magic-link login through Supabase Auth
+- Automatic profile creation for new users
+- Public browsing of open tasks
+- Creating tasks as a logged-in user
+- Applying to tasks as a logged-in user
+- Viewing recently posted tasks in "My Tasks"
+
+Google login, real-time messages, application management, payments, and full review workflows are intentionally left for later iterations.
+
 Production Build
 
 To create and run a production build locally:
