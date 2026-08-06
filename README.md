@@ -1,39 +1,110 @@
-# UC Connect Demo
+UC Connect Demo
 
-UC Connect 是面向 UC 系学生的校园需求与互助平台原型。当前版本使用模拟数据，不包含数据库、真实账号或支付功能。
+UC Connect is a campus task and mutual-help platform designed for students across the University of California system. It allows students to discover requests, offer help, and connect with people at UC Berkeley, UC San Diego, UCLA, and eventually other UC campuses.
 
-## 本地运行
+This repository contains an interactive front-end prototype. It uses mock data and does not currently include a database, real user accounts, or payment processing.
 
-需要 Node.js 22 或更新版本。
+Features
 
-```bash
+Browse and search campus tasks
+
+Filter tasks by school and category
+
+View task details and submit a mock application
+
+Complete a guided task-posting flow
+
+View posted tasks and submitted applications
+
+Explore a sample user profile and reviews
+
+Responsive design for desktop and mobile devices
+
+Tech Stack
+
+Next.js 16
+
+React 19
+
+TypeScript
+
+Tailwind CSS 4
+
+Getting Started
+
+Prerequisites
+
+Node.js 22 or later
+
+npm
+
+Installation
+
+Clone the repository and install its dependencies:
+
+git clone <your-repository-url>
+cd uc-connect
 npm install
+
+Start the development server:
+
 npm run dev
-```
 
-然后打开终端显示的本地地址（通常是 `http://localhost:3000`）。
+Open the local URL shown in your terminal, usually http://localhost:3000.
 
-## 生产构建
+Production Build
 
-```bash
+To create and run a production build locally:
+
 npm run build
 npm run start
-```
 
-## 主要文件
+Project Structure
 
-- `app/page.tsx`：页面内容、模拟任务数据和全部交互逻辑
-- `app/globals.css`：页面样式和手机端适配
-- `app/layout.tsx`：网页标题与基础布局
-- `public/favicon.svg`：网站图标
+app/page.tsx — Page content, mock task data, and interactive behavior
 
-## 部署
+app/globals.css — Global styles and responsive design rules
 
-这是标准 Next.js 项目，可以导入 GitHub 后部署到 Vercel，也可以部署到其他支持 Next.js 的平台。
+app/layout.tsx — Site metadata and root layout
 
-## 当前限制
+public/favicon.svg — Website icon
 
-- 所有任务和用户信息均为模拟数据
-- 刷新页面后不会保存发布或申请操作
-- 登录按钮仅展示界面，不会建立真实账户
-- 未接入 Supabase、支付或邮件服务
+Deployment
+
+UC Connect is a standard Next.js project and can be deployed directly through Vercel:
+
+Push the project to a GitHub repository.
+
+Import the repository into Vercel.
+
+Keep the default Next.js build settings.
+
+Deploy the project.
+
+Future pushes to the repository's main branch will automatically trigger a new deployment. The project can also be hosted on any platform that supports Next.js.
+
+Current Limitations
+
+All tasks and user profiles use mock data.
+
+Posted tasks and applications are not saved after the page is refreshed.
+
+The login interface does not create or authenticate real accounts.
+
+Supabase, payments, email notifications, and other backend services are not connected.
+
+Planned Next Steps
+
+Test the prototype with students from UCB, UCSD, and UCLA
+
+Improve the interface and user flow based on feedback
+
+Add authentication and UC email verification
+
+Connect Supabase for persistent tasks, applications, reviews, and profiles
+
+Add moderation, reporting, and notification tools
+
+Project Status
+
+UC Connect is currently an early-stage prototype intended for product testing and feedback.
