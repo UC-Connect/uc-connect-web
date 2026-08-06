@@ -152,3 +152,4 @@ Add moderation, reporting, and notification tools
 Project Status
 
 UC Connect is currently an early-stage prototype intended for product testing and feedback.
+Deployment updated.
