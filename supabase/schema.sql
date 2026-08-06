@@ -67,6 +67,16 @@ create index if not exists tasks_author_idx on public.tasks(author_id);
 create index if not exists applications_task_idx on public.applications(task_id);
 create index if not exists applications_applicant_idx on public.applications(applicant_id);
 
+grant usage on schema public to anon, authenticated;
+grant select on public.profiles to anon, authenticated;
+grant insert, update on public.profiles to authenticated;
+grant select on public.tasks to anon, authenticated;
+grant insert, update, delete on public.tasks to authenticated;
+grant select, insert, update on public.applications to authenticated;
+grant select on public.reviews to anon, authenticated;
+grant insert on public.reviews to authenticated;
+grant select, insert on public.reports to authenticated;
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -174,6 +184,11 @@ drop policy if exists "Profiles are readable by everyone" on public.profiles;
 create policy "Profiles are readable by everyone"
 on public.profiles for select
 using (true);
+
+drop policy if exists "Users can create their own profile" on public.profiles;
+create policy "Users can create their own profile"
+on public.profiles for insert
+with check (auth.uid() = id);
 
 drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"

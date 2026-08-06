@@ -87,7 +87,7 @@ MVP Flow
 
 The current MVP supports:
 
-- Email magic-link login through Supabase Auth
+- Email and password login through Supabase Auth
 - Automatic profile creation for new users
 - Public browsing of open tasks
 - Creating tasks as a logged-in user

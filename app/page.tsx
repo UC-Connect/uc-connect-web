@@ -243,30 +243,56 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function sendLoginLink(event: FormEvent<HTMLFormElement>) {
+  async function signInWithPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
 
     if (!supabase) {
       flash("请先配置 Supabase 环境变量");
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
+      password,
+    });
+
+    if (!signInError) {
+      setShowLogin(false);
+      flash("登录成功");
+      return;
+    }
+
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
       options: {
-        emailRedirectTo: window.location.origin,
+        data: {
+          display_name: email.split("@")[0],
+          school: "UCB",
+        },
       },
     });
 
-    if (error) {
-      flash(error.message);
+    if (signUpError) {
+      flash(signUpError.message);
+      return;
+    }
+
+    const { error: retryError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (retryError) {
+      flash("账号已创建，请再点一次登录");
       return;
     }
 
     setShowLogin(false);
-    flash("验证邮件已发送");
+    flash("注册并登录成功");
   }
 
   async function handlePublish(event: FormEvent<HTMLFormElement>) {
@@ -276,6 +302,19 @@ export default function Home() {
     if (!supabase || !user) {
       flash("请先登录后再发布需求");
       setShowLogin(true);
+      return;
+    }
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      display_name: user.email?.split("@")[0] ?? "UC Student",
+      school: String(form.get("school")) as Task["school"],
+      avatar_initials: (user.email?.slice(0, 2) ?? "UC").toUpperCase(),
+      verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
+    }, { onConflict: "id" });
+
+    if (profileError) {
+      flash(profileError.message);
       return;
     }
 
@@ -565,7 +604,7 @@ export default function Home() {
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
-      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("MVP 先使用邮箱登录，Google 可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={sendLoginLink}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><button className="primary-button wide" type="submit">发送登录链接</button></form><small>使用学校邮箱登录可获得 UC 认证标志</small></section></div>}
+      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={signInWithPassword}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>密码<input required name="password" minLength={6} placeholder="至少 6 位密码" type="password" /></label><button className="primary-button wide" type="submit">登录 / 注册</button></form><small>新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。</small></section></div>}
     </main>
   );
 }
