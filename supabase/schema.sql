@@ -29,6 +29,8 @@ create table if not exists public.tasks (
   due_date date,
   applications_count int not null default 0,
   status text not null default 'open' check (status in ('open', 'matched', 'in_progress', 'completed', 'cancelled')),
+  author_completed_at timestamptz,
+  applicant_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -73,6 +75,8 @@ create index if not exists applications_applicant_idx on public.applications(app
 alter table public.profiles add column if not exists contact_email text;
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists wechat_id text;
+alter table public.tasks add column if not exists author_completed_at timestamptz;
+alter table public.tasks add column if not exists applicant_completed_at timestamptz;
 
 grant usage on schema public to anon, authenticated;
 grant select on public.profiles to anon, authenticated;
@@ -205,6 +209,59 @@ drop trigger if exists reviews_validate_participants on public.reviews;
 create trigger reviews_validate_participants
 before insert or update of task_id, reviewer_id, reviewee_id on public.reviews
 for each row execute function public.validate_review_participants();
+
+create or replace function public.confirm_task_completion(target_task_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  task_author uuid;
+  accepted_applicant uuid;
+begin
+  select tasks.author_id
+  into task_author
+  from public.tasks
+  where tasks.id = target_task_id
+  and tasks.status in ('matched', 'in_progress');
+
+  if task_author is null then
+    raise exception 'Task is not ready for completion confirmation';
+  end if;
+
+  select applications.applicant_id
+  into accepted_applicant
+  from public.applications
+  where applications.task_id = target_task_id
+  and applications.status = 'accepted'
+  limit 1;
+
+  if accepted_applicant is null then
+    raise exception 'No accepted applicant found for this task';
+  end if;
+
+  if auth.uid() = task_author then
+    update public.tasks
+    set author_completed_at = coalesce(author_completed_at, now())
+    where tasks.id = target_task_id;
+  elsif auth.uid() = accepted_applicant then
+    update public.tasks
+    set applicant_completed_at = coalesce(applicant_completed_at, now())
+    where tasks.id = target_task_id;
+  else
+    raise exception 'Only matched task participants can confirm completion';
+  end if;
+
+  update public.tasks
+  set status = 'completed'
+  where tasks.id = target_task_id
+  and author_completed_at is not null
+  and applicant_completed_at is not null;
+end;
+$$;
+
+grant execute on function public.confirm_task_completion(uuid) to authenticated;
 
 create or replace function public.handle_new_user()
 returns trigger

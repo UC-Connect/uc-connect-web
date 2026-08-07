@@ -31,6 +31,8 @@ export type TaskRow = {
   due_date: string | null;
   applications_count: number;
   status: "open" | "matched" | "in_progress" | "completed" | "cancelled";
+  author_completed_at: string | null;
+  applicant_completed_at: string | null;
   created_at: string;
   updated_at: string;
   profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email"> | null;
@@ -44,7 +46,7 @@ export type ApplicationRow = {
   available_time: string;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   created_at: string;
-  tasks?: (Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "created_at"> & {
+  tasks?: (Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "author_completed_at" | "applicant_completed_at" | "created_at"> & {
     profiles?: Pick<ProfileRow, "display_name" | "contact_email" | "phone" | "wechat_id"> | null;
   }) | null;
   profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major" | "contact_email" | "phone" | "wechat_id"> | null;

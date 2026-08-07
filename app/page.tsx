@@ -15,6 +15,7 @@ type Task = {
   mode: string;
   reward: string;
   time: string;
+  createdAt: string;
   applicants: number;
   author: string;
   verified: boolean;
@@ -24,6 +25,8 @@ type Task = {
   due: string;
   tone: string;
   status: TaskRow["status"];
+  authorCompletedAt: string | null;
+  applicantCompletedAt: string | null;
 };
 
 const demoTasks: Task[] = [
@@ -35,6 +38,7 @@ const demoTasks: Task[] = [
     mode: "线下",
     reward: "$25",
     time: "12 分钟前",
+    createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
     applicants: 3,
     author: "Mia Chen",
     verified: true,
@@ -44,6 +48,8 @@ const demoTasks: Task[] = [
     due: "8 月 8 日前",
     tone: "blue",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
   {
     id: "demo-2",
@@ -53,6 +59,7 @@ const demoTasks: Task[] = [
     mode: "线上",
     reward: "$18",
     time: "28 分钟前",
+    createdAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
     applicants: 5,
     author: "Eason L.",
     verified: false,
@@ -62,6 +69,8 @@ const demoTasks: Task[] = [
     due: "本周内",
     tone: "teal",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
   {
     id: "demo-3",
@@ -71,6 +80,7 @@ const demoTasks: Task[] = [
     mode: "线下",
     reward: "免费互助",
     time: "1 小时前",
+    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     applicants: 2,
     author: "Sophie Wu",
     verified: true,
@@ -80,6 +90,8 @@ const demoTasks: Task[] = [
     due: "8 月 10 日",
     tone: "gold",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
   {
     id: "demo-4",
@@ -89,6 +101,7 @@ const demoTasks: Task[] = [
     mode: "线下",
     reward: "$10",
     time: "2 小时前",
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     applicants: 1,
     author: "Jason Y.",
     verified: true,
@@ -98,6 +111,8 @@ const demoTasks: Task[] = [
     due: "本周五",
     tone: "violet",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
   {
     id: "demo-5",
@@ -107,6 +122,7 @@ const demoTasks: Task[] = [
     mode: "线上",
     reward: "$20",
     time: "今天 09:40",
+    createdAt: new Date().toISOString(),
     applicants: 4,
     author: "Lina Zhang",
     verified: false,
@@ -116,6 +132,8 @@ const demoTasks: Task[] = [
     due: "下周前",
     tone: "coral",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
   {
     id: "demo-6",
@@ -125,6 +143,7 @@ const demoTasks: Task[] = [
     mode: "线下",
     reward: "$12",
     time: "今天 08:15",
+    createdAt: new Date().toISOString(),
     applicants: 0,
     author: "Kevin H.",
     verified: true,
@@ -134,6 +153,8 @@ const demoTasks: Task[] = [
     due: "三天内",
     tone: "teal",
     status: "open",
+    authorCompletedAt: null,
+    applicantCompletedAt: null,
   },
 ];
 
@@ -153,6 +174,11 @@ const textMap: Record<string, string> = {
   "登录": "Log In",
   "发布需求": "Post Request",
   "打开个人主页": "Open profile",
+  "查看资料": "View Profile",
+  "公开资料": "Public Profile",
+  "完成次数": "Completed",
+  "平均评分": "Average Rating",
+  "联系方式仅在任务匹配后展示。": "Contact info is shown only after a task match.",
   "让每一个需求，": "Let every request",
   "找到对的人回应。": "reach the right person.",
   "连接 UC 校园里的同学，发布需求、分享经验、互相帮忙。简单一点，真诚一点。": "Connect with students across UC campuses to post requests, share experience, and help each other.",
@@ -195,7 +221,7 @@ const textMap: Record<string, string> = {
   "安全提醒": "Safety Note",
   "请勿提前转账或分享敏感个人信息。接受申请后再交换联系方式。": "Do not pay in advance or share sensitive personal information. Exchange contact info only after a match.",
   "任务报酬": "Reward",
-  "平台 Demo 不处理真实付款": "This demo does not process payments",
+  "平台暂不处理真实付款": "Payments are not processed on platform yet",
   "已有申请": "Applications",
   "管理任务": "Manage Task",
   "查看申请": "View Applications",
@@ -232,7 +258,7 @@ const textMap: Record<string, string> = {
   "例如：Blackwell Hall": "Example: Blackwell Hall",
   "希望完成时间": "Preferred Completion Date",
   "报酬说明": "Reward Details",
-  "MVP 暂不处理真实付款。": "MVP does not process payments.",
+  "平台暂不处理真实付款。": "Payments are not processed on platform yet.",
   "需求类型": "Request Type",
   "有偿任务": "Paid Task",
   "免费互助": "Free Help",
@@ -264,6 +290,12 @@ const textMap: Record<string, string> = {
   "关闭招募": "Close Recruiting",
   "联系对方": "Contact",
   "确认完成": "Mark Complete",
+  "我已完成": "I Finished",
+  "等待对方确认": "Waiting for the other side",
+  "你已确认完成": "You confirmed completion",
+  "双方确认后才会进入已完成并开放评价。": "The task is completed and ratings open only after both sides confirm.",
+  "任务已确认，等待对方确认": "Confirmed. Waiting for the other side.",
+  "双方已确认，任务已完成": "Both sides confirmed. Task completed.",
   "查看记录": "View Record",
   "评价对方": "Rate",
   "已评价": "Rated",
@@ -273,7 +305,6 @@ const textMap: Record<string, string> = {
   "暂无申请": "No applications yet",
   "有同学申请后会出现在这里。": "Applications will appear here once students apply.",
   "信用评价": "Rating",
-  "MVP 阶段暂无历史评价": "No rating history yet in MVP",
   "接受": "Accept",
   "拒绝": "Reject",
   "申请记录": "Application Records",
@@ -287,6 +318,11 @@ const textMap: Record<string, string> = {
   "任务通知": "Task Notifications",
   "收到新的任务申请": "New task application",
   "申请状态已处理": "Application status updated",
+  "任务等待完成确认": "Task waiting for completion confirmation",
+  "任务已完成，可进行评价": "Task completed. Rating is available.",
+  "收到新的评分": "New rating received",
+  "对方已确认完成，请你确认后进入评价。": "The other side confirmed completion. Confirm yours to open ratings.",
+  "你收到了一条新的星级评分。": "You received a new star rating.",
   "申请了": "applied to",
   "你申请的": "Your application for",
   "当前状态": "current status",
@@ -331,7 +367,7 @@ const textMap: Record<string, string> = {
   "保存资料": "Save Profile",
   "建议至少填写邮箱或微信，方便任务匹配后联系。": "Add at least an email or WeChat so matched users can contact you.",
   "联系": "Contact",
-  "UC Connect MVP 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。": "UC Connect MVP does not offer real-time in-app chat. Use the contact info shared with matched users.",
+  "UC Connect 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。": "UC Connect does not offer real-time in-app chat yet. Use the contact info shared with matched users.",
   "邮箱": "Email",
   "请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。": "Do not pay in advance or share sensitive personal information. Confirm scope and delivery first.",
   "评价": "Rate",
@@ -346,10 +382,11 @@ const textMap: Record<string, string> = {
   "时间待定": "Time TBD",
   "未登录用户": "Guest",
   "未设置学校": "School not set",
-  "读取数据库失败，已显示 Demo 数据": "Failed to load database. Showing demo data.",
+  "读取数据库失败，请稍后再试": "Failed to load database. Please try again later.",
   "读取申请记录失败": "Failed to load application records",
   "读取评价失败": "Failed to load ratings",
   "读取收到的申请失败": "Failed to load received applications",
+  "读取公开资料失败": "Failed to load public profile",
   "已退出登录": "Logged out",
   "联系方式已保存": "Contact info saved",
   "请先配置 Supabase 环境变量": "Please configure Supabase environment variables first",
@@ -367,13 +404,14 @@ const textMap: Record<string, string> = {
   "你已经评价过对方": "You have already rated this user",
   "评价已提交": "Rating submitted",
   "还没有已接受的申请人": "No accepted applicant yet",
-  "已打开举报入口（Demo）": "Report flow opened (Demo)",
+  "举报功能即将开放": "Report flow is coming soon",
   "Google 登录可以下一步接入": "Google login can be added next",
   "编辑功能待上线": "Edit is coming soon",
   "已关闭的任务不能继续操作": "Closed tasks cannot be edited further",
   "接受这位申请人后，任务会进入进行中，其他待处理申请会自动标记为未通过。确认接受吗？": "Accepting this applicant will move the task to In Progress and reject other pending applications. Continue?",
   "确认关闭这个任务吗？关闭后其他同学将不能继续申请。": "Close this task? Others will no longer be able to apply.",
   "确认任务已经完成吗？完成后可以进入评价流程。": "Confirm this task is complete? You can rate each other afterward.",
+  "确认你已经完成这项任务吗？双方都确认后才会开放评价。": "Confirm you have completed this task? Ratings open after both sides confirm.",
   "确认更新任务状态吗？": "Confirm status update?",
   "已接受申请，任务进入进行中": "Application accepted. Task moved to In Progress.",
   "已拒绝申请": "Application rejected",
@@ -399,6 +437,8 @@ type AppliedTask = {
   task: {
     authorId: string;
     status: TaskRow["status"];
+    authorCompletedAt: string | null;
+    applicantCompletedAt: string | null;
     title: string;
     school: Task["school"];
     mode: string;
@@ -451,6 +491,17 @@ type ProfileContact = {
 type ReviewSummary = {
   average: number;
   count: number;
+};
+
+type PublicProfile = {
+  id: string;
+  name: string;
+  school: string;
+  major: string | null;
+  initials: string;
+  verified: boolean;
+  rating: ReviewSummary;
+  completedCount: number;
 };
 
 function renderStars(rating: number) {
@@ -531,6 +582,7 @@ function mapTaskRow(row: TaskRow): Task {
     mode: row.mode,
     reward: formatReward(row),
     time: formatRelativeTime(row.created_at),
+    createdAt: row.created_at,
     applicants: row.applications_count,
     author: row.profiles?.display_name ?? "UC Student",
     verified: row.profiles?.verified_uc_email ?? false,
@@ -540,6 +592,8 @@ function mapTaskRow(row: TaskRow): Task {
     due: formatDueDate(row.due_date),
     tone: row.school === "UCB" ? "blue" : row.school === "UCSD" ? "teal" : "gold",
     status: row.status,
+    authorCompletedAt: row.author_completed_at ?? null,
+    applicantCompletedAt: row.applicant_completed_at ?? null,
   };
 }
 
@@ -555,6 +609,8 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
       title: row.tasks.title,
       authorId: row.tasks.author_id,
       status: row.tasks.status,
+      authorCompletedAt: row.tasks.author_completed_at ?? null,
+      applicantCompletedAt: row.tasks.applicant_completed_at ?? null,
       school: row.tasks.school,
       mode: row.tasks.mode,
       reward: formatReward(row.tasks),
@@ -648,8 +704,10 @@ export default function Home() {
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | TaskRow["status"]>("all");
   const [profileContact, setProfileContact] = useState<ProfileContact>({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
+  const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({ average: 0, count: 0 });
+  const [receivedReviews, setReceivedReviews] = useState<ReviewRow[]>([]);
   const [myReviews, setMyReviews] = useState<ReviewRow[]>([]);
   const [reviewTarget, setReviewTarget] = useState<{ taskId: string; revieweeId: string; name: string } | null>(null);
   const [selectedRating, setSelectedRating] = useState(5);
@@ -687,6 +745,7 @@ export default function Home() {
 
     setAppliedTasks([]);
     setReceivedApplications([]);
+    setReceivedReviews([]);
     setMyReviews([]);
     setReviewSummary({ average: 0, count: 0 });
     setProfileContact({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
@@ -735,7 +794,6 @@ export default function Home() {
   const openPostedCount = postedTasks.filter((task) => task.status === "open").length;
   const inProgressPostedCount = postedTasks.filter((task) => task.status === "in_progress" || task.status === "matched").length;
   const completedPostedCount = postedTasks.filter((task) => task.status === "completed").length;
-  const unreadNotifications = [...receivedApplications, ...appliedTasks].filter((item) => new Date(item.createdAt).getTime() > messageReadAt).length;
   const taskNotifications = useMemo(() => [
     ...receivedApplications.map((application) => ({
       id: `received-${application.id}`,
@@ -755,8 +813,57 @@ export default function Home() {
       time: application.createdAt,
       status: tv(formatApplicationStatus(application.status)),
     })),
-  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [receivedApplications, appliedTasks, language]);
+    ...postedTasks
+      .filter((task) => task.status === "in_progress" && task.applicantCompletedAt && !task.authorCompletedAt)
+      .map((task) => ({
+        id: `posted-confirm-${task.id}`,
+        title: t("任务等待完成确认"),
+        body: language === "zh" ? `「${task.title}」${t("对方已确认完成，请你确认后进入评价。")}` : `"${task.title}" ${t("对方已确认完成，请你确认后进入评价。")}`,
+        time: task.applicantCompletedAt ?? task.createdAt,
+        status: t("进行中"),
+      })),
+    ...appliedTasks
+      .filter((application) => application.status === "accepted" && application.task.status === "in_progress" && application.task.authorCompletedAt && !application.task.applicantCompletedAt)
+      .map((application) => ({
+        id: `applied-confirm-${application.id}`,
+        title: t("任务等待完成确认"),
+        body: language === "zh" ? `「${application.task.title}」${t("对方已确认完成，请你确认后进入评价。")}` : `"${application.task.title}" ${t("对方已确认完成，请你确认后进入评价。")}`,
+        time: application.task.authorCompletedAt ?? application.createdAt,
+        status: t("进行中"),
+      })),
+    ...[...postedTasks.filter((task) => task.status === "completed").map((task) => ({
+      id: task.id,
+      title: task.title,
+      time: task.createdAt,
+    })), ...appliedTasks.filter((application) => application.task.status === "completed").map((application) => ({
+      id: application.taskId,
+      title: application.task.title,
+      time: application.createdAt,
+    }))]
+      .map((task) => ({
+        id: `completed-${task.id}`,
+        title: t("任务已完成，可进行评价"),
+        body: language === "zh" ? `「${task.title}」${t("任务已完成，可进行评价")}` : `"${task.title}" ${t("任务已完成，可进行评价")}`,
+        time: task.time,
+        status: t("已完成"),
+      })),
+    ...receivedReviews.map((review) => ({
+      id: `review-${review.id}`,
+      title: t("收到新的评分"),
+      body: t("你收到了一条新的星级评分。"),
+      time: review.created_at,
+      status: `${review.rating} ${t("星评价")}`,
+    })),
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [receivedApplications, appliedTasks, postedTasks, receivedReviews, language]);
+  const unreadNotifications = taskNotifications.filter((item) => new Date(item.time).getTime() > messageReadAt).length;
   const isOwnSelectedTask = Boolean(user && selectedTask?.authorId === user.id);
+  const selectedAcceptedApplication = useMemo(() => (
+    selectedTask ? acceptedApplicationByTaskId.get(selectedTask.id) ?? null : null
+  ), [acceptedApplicationByTaskId, selectedTask]);
+  const selectedAppliedTask = useMemo(() => (
+    selectedTask ? appliedTasks.find((application) => application.taskId === selectedTask.id) ?? null : null
+  ), [appliedTasks, selectedTask]);
+  const isAcceptedApplicantForSelectedTask = selectedAppliedTask?.status === "accepted";
 
   function requireAuth(action: () => void, message = "请先登录后继续") {
     if (!user) {
@@ -769,7 +876,7 @@ export default function Home() {
   }
 
   async function loadTasks() {
-    if (!supabase) return;
+    if (!supabase) return tasks;
     setIsLoadingTasks(true);
     let query = supabase
       .from("tasks")
@@ -785,11 +892,13 @@ export default function Home() {
     setIsLoadingTasks(false);
 
     if (error) {
-      flash("读取数据库失败，已显示 Demo 数据");
-      return;
+      flash("读取数据库失败，请稍后再试");
+      return tasks;
     }
 
-    setTasks(((data ?? []) as TaskRow[]).map(mapTaskRow));
+    const nextTasks = ((data ?? []) as TaskRow[]).map(mapTaskRow);
+    setTasks(nextTasks);
+    return nextTasks;
   }
 
   async function loadApplications() {
@@ -797,7 +906,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("*, tasks(id, author_id, title, school, mode, reward_amount, reward_type, status, created_at, profiles(display_name, contact_email, phone, wechat_id))")
+      .select("*, tasks(id, author_id, title, school, mode, reward_amount, reward_type, status, author_completed_at, applicant_completed_at, created_at, profiles(display_name, contact_email, phone, wechat_id))")
       .eq("applicant_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -851,6 +960,7 @@ export default function Home() {
       average: receivedReviews.length ? total / receivedReviews.length : 0,
       count: receivedReviews.length,
     });
+    setReceivedReviews(receivedReviews);
     setMyReviews((mine ?? []) as ReviewRow[]);
   }
 
@@ -859,7 +969,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("*, profiles(display_name, avatar_initials, verified_uc_email, school, major), tasks(id, author_id, title, status)")
+      .select("*, profiles(display_name, avatar_initials, verified_uc_email, school, major, contact_email, phone, wechat_id), tasks(id, author_id, title, status)")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -1126,7 +1236,10 @@ export default function Home() {
   }
 
   async function refreshUserWorkflows() {
-    await loadTasks();
+    const refreshedTasks = await loadTasks();
+    if (selectedTask) {
+      setSelectedTask(refreshedTasks.find((task) => task.id === selectedTask.id) ?? selectedTask);
+    }
     if (user) {
       await loadApplications();
       await loadReceivedApplications();
@@ -1204,6 +1317,30 @@ export default function Home() {
     flash(status === "completed" ? "任务已完成" : "任务状态已更新");
   }
 
+  async function confirmTaskCompletion(task: Pick<Task, "id">) {
+    if (!supabase || !user) return;
+
+    if (!window.confirm("确认你已经完成这项任务吗？双方都确认后才会开放评价。")) return;
+
+    const { error } = await supabase.rpc("confirm_task_completion", {
+      target_task_id: task.id,
+    });
+
+    if (error) {
+      flash(error.message);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("tasks")
+      .select("status")
+      .eq("id", task.id)
+      .single();
+    await refreshUserWorkflows();
+    const refreshed = data as Pick<TaskRow, "status"> | null;
+    flash(refreshed?.status === "completed" ? "双方已确认，任务已完成" : "任务已确认，等待对方确认");
+  }
+
   function openContactInfo(contact: ContactInfo) {
     if (!contact.email && !contact.phone && !contact.wechat) {
       flash("对方还没有填写联系方式");
@@ -1211,6 +1348,48 @@ export default function Home() {
     }
 
     setContactInfo(contact);
+  }
+
+  async function openPublicProfile(profileId?: string) {
+    if (!supabase || !profileId) return;
+
+    const [{ data: profile, error: profileError }, { data: reviews }, { data: posted }, { data: completedApplications }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, display_name, school, major, avatar_initials, verified_uc_email")
+        .eq("id", profileId)
+        .single(),
+      supabase.from("reviews").select("rating").eq("reviewee_id", profileId),
+      supabase.from("tasks").select("id").eq("author_id", profileId).eq("status", "completed"),
+      supabase.from("applications").select("id, tasks(status)").eq("applicant_id", profileId).eq("status", "accepted"),
+    ]);
+
+    if (profileError || !profile) {
+      flash("读取公开资料失败");
+      return;
+    }
+
+    const receivedReviews = (reviews ?? []) as Pick<ReviewRow, "rating">[];
+    const total = receivedReviews.reduce((sum, review) => sum + review.rating, 0);
+    const acceptedCompletedCount = (completedApplications ?? []).filter((application) => {
+      const taskValue = application.tasks as unknown;
+      const task = Array.isArray(taskValue) ? taskValue[0] as Pick<TaskRow, "status"> | undefined : taskValue as Pick<TaskRow, "status"> | null;
+      return task?.status === "completed";
+    }).length;
+
+    setPublicProfile({
+      id: profile.id,
+      name: profile.display_name,
+      school: profile.school,
+      major: profile.major,
+      initials: profile.avatar_initials,
+      verified: profile.verified_uc_email,
+      rating: {
+        average: receivedReviews.length ? total / receivedReviews.length : 0,
+        count: receivedReviews.length,
+      },
+      completedCount: (posted?.length ?? 0) + acceptedCompletedCount,
+    });
   }
 
   function contactFromApplication(application: ReceivedApplication): ContactInfo {
@@ -1357,7 +1536,7 @@ export default function Home() {
             <article className="detail-main">
               <div className="detail-meta"><span className={`school-badge ${selectedTask.school.toLowerCase()}`}>{selectedTask.school}</span><span>{tv(selectedTask.category)}</span><span>·</span><span>{tv(selectedTask.time)}</span></div>
               <h1>{selectedTask.title}</h1>
-              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ {t("已认证")}</b>}</strong><small>{t("完成任务后可互相评分")}</small></span></div>
+              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ {t("已认证")}</b>}</strong><small>{t("完成任务后可互相评分")}</small></span>{selectedTask.authorId && <button className="mini-action" onClick={() => openPublicProfile(selectedTask.authorId)}>{t("查看资料")}</button>}</div>
               <div className="detail-facts">
                 <div><span>{t("地点")}</span><strong>{selectedTask.location}</strong></div>
                 <div><span>{t("希望完成")}</span><strong>{tv(selectedTask.due)}</strong></div>
@@ -1367,12 +1546,19 @@ export default function Home() {
               <div className="safety-note"><span>◇</span><div><strong>{t("安全提醒")}</strong><p>{t("请勿提前转账或分享敏感个人信息。接受申请后再交换联系方式。")}</p></div></div>
             </article>
             <aside className="apply-card">
-              <span>{t("任务报酬")}</span><strong>{tv(selectedTask.reward)}</strong><small>{t("平台 Demo 不处理真实付款")}</small>
+              <span>{t("任务报酬")}</span><strong>{tv(selectedTask.reward)}</strong><small>{t("平台暂不处理真实付款")}</small>
               <hr />
               <div className="apply-stat"><span>{t("已有申请")}</span><b>{selectedTask.applicants}</b></div>
               {isOwnSelectedTask && <button className="primary-button wide" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("管理任务")}</button>}
               {isOwnSelectedTask && selectedTask.applicants > 0 && <button className="ghost-outline wide-action" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("查看申请")}（{selectedTask.applicants}）</button>}
-              {!isOwnSelectedTask && !showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>{t("申请接取")}</button>}
+              {isOwnSelectedTask && selectedTask.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openContactInfo(contactFromApplication(selectedAcceptedApplication)) : flash("还没有已接受的申请人")}>{t("联系对方")}</button>}
+              {isOwnSelectedTask && selectedTask.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedTask.authorCompletedAt ? flash("你已确认完成") : confirmTaskCompletion(selectedTask)}>{selectedTask.authorCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
+              {isOwnSelectedTask && selectedTask.status === "completed" && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openReviewTarget({ taskId: selectedTask.id, revieweeId: selectedAcceptedApplication.applicantId, name: selectedAcceptedApplication.applicantName }) : flash("还没有已接受的申请人")}>{selectedAcceptedApplication && hasReviewed(selectedTask.id, selectedAcceptedApplication.applicantId) ? t("已评价") : t("评价对方")}</button>}
+              {!isOwnSelectedTask && selectedAppliedTask && <div className="success-box"><span>✓</span><strong>{tv(formatApplicationStatus(selectedAppliedTask.status))}</strong><p>{selectedAppliedTask.status === "accepted" ? t("双方确认后才会进入已完成并开放评价。") : t("发布者选择后会通知你。")}</p></div>}
+              {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && <button className="ghost-outline wide-action" onClick={() => openContactInfo(contactFromAppliedTask(selectedAppliedTask!))}>{t("联系对方")}</button>}
+              {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && selectedAppliedTask?.task.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedAppliedTask.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: selectedAppliedTask.taskId })}>{selectedAppliedTask.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
+              {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && selectedAppliedTask?.task.status === "completed" && <button className="ghost-outline wide-action" onClick={() => openReviewTarget({ taskId: selectedAppliedTask.taskId, revieweeId: selectedAppliedTask.task.authorId, name: selectedAppliedTask.author.name })}>{hasReviewed(selectedAppliedTask.taskId, selectedAppliedTask.task.authorId) ? t("已评价") : t("评价发布者")}</button>}
+              {!isOwnSelectedTask && !selectedAppliedTask && !showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>{t("申请接取")}</button>}
               {!isOwnSelectedTask && showApply && !applied && <form onSubmit={handleApply} className="apply-form">
                 <label>{t("申请说明")}<textarea required name="message" placeholder={t("介绍一下你为什么适合，以及可以完成的时间…")} /></label>
                 <label>{t("可完成时间")}<input required name="available_time" placeholder={t("例如：周三下午")} /></label>
@@ -1380,7 +1566,7 @@ export default function Home() {
                 <button className="text-button wide" type="button" onClick={() => setShowApply(false)}>{t("取消")}</button>
               </form>}
               {applied && <div className="success-box"><span>✓</span><strong>{t("申请已提交")}</strong><p>{t("发布者选择后会通知你。")}</p></div>}
-              <button className="report-button" onClick={() => flash("已打开举报入口（Demo）")}>⚑ {t("举报此任务")}</button>
+              <button className="report-button" onClick={() => flash("举报功能即将开放")}>⚑ {t("举报此任务")}</button>
             </aside>
           </div>
         </section>
@@ -1415,7 +1601,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="form-section">
-                <span className="form-step">03</span><div><h2>{t("报酬说明")}</h2><p>{t("MVP 暂不处理真实付款。")}</p></div>
+                <span className="form-step">03</span><div><h2>{t("报酬说明")}</h2><p>{t("平台暂不处理真实付款。")}</p></div>
                 <div className="form-fields full-row">
                   <label>{t("需求类型")}<select name="reward_type" value={rewardType} onChange={(event) => setRewardType(event.target.value as "paid" | "mutual_help")}><option value="paid">{t("有偿任务")}</option><option value="mutual_help">{t("免费互助")}</option></select></label>
                   <label>{t("报酬金额")}<div className="money-input"><span>$</span><input disabled={rewardType === "mutual_help"} required={rewardType === "paid"} name="reward_amount" type="number" min="0" defaultValue={publishDraft.reward_amount ?? ""} placeholder={rewardType === "paid" ? "25" : t("免费互助无需填写")} /></div></label>
@@ -1440,17 +1626,17 @@ export default function Home() {
               <div className="task-table">
                 <div className="table-title"><h2>{t("最近发布")}</h2><button onClick={() => navigate("publish")}>＋ {t("新需求")}</button></div>
                 {visiblePostedTasks.map((task) => (
-                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{tv(formatTaskStatus(task.status))}</span><div><strong>{task.title}</strong><small>{task.school} · {tv(task.category)} · {task.applicants} {t("份申请")}</small></div><b>{tv(task.reward)}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>{t("查看详情")}</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>{t("查看申请")}（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>{t("编辑")}</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>{t("关闭招募")}</button>}{task.status === "in_progress" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openContactInfo(contactFromApplication(accepted)) : flash("还没有已接受的申请人"); }}>{t("联系对方")}</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>{t("确认完成")}</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>{t("查看记录")}</button>}{task.status === "completed" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openReviewTarget({ taskId: task.id, revieweeId: accepted.applicantId, name: accepted.applicantName }) : flash("还没有已接受的申请人"); }}>{acceptedApplicationByTaskId.get(task.id) && hasReviewed(task.id, acceptedApplicationByTaskId.get(task.id)!.applicantId) ? t("已评价") : t("评价对方")}</button>}</div></div>
+                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{tv(formatTaskStatus(task.status))}</span><div><strong>{task.title}</strong><small>{task.school} · {tv(task.category)} · {task.applicants} {t("份申请")}</small></div><b>{tv(task.reward)}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>{t("查看详情")}</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>{t("查看申请")}（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>{t("编辑")}</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>{t("关闭招募")}</button>}{task.status === "in_progress" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openContactInfo(contactFromApplication(accepted)) : flash("还没有已接受的申请人"); }}>{t("联系对方")}</button>}{task.status === "in_progress" && <button onClick={() => task.authorCompletedAt ? flash("你已确认完成") : confirmTaskCompletion(task)}>{task.authorCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>{t("查看记录")}</button>}{task.status === "completed" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openReviewTarget({ taskId: task.id, revieweeId: accepted.applicantId, name: accepted.applicantName }) : flash("还没有已接受的申请人"); }}>{acceptedApplicationByTaskId.get(task.id) && hasReviewed(task.id, acceptedApplicationByTaskId.get(task.id)!.applicantId) ? t("已评价") : t("评价对方")}</button>}</div></div>
                 ))}
                 {visiblePostedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>{t("没有对应状态的任务")}</h3><p>{t("发布或切换状态筛选后，会显示在这里。")}</p></div>}
               </div>
-              {managedTaskId && <section className="application-panel"><div className="table-title"><h2>{t("申请管理")}</h2><span>{managedTaskApplications.length} {t("份申请")}</span></div>{managedTaskApplications.length === 0 ? <div className="empty-state"><span>⌕</span><h3>{t("暂无申请")}</h3><p>{t("有同学申请后会出现在这里。")}</p></div> : managedTaskApplications.map((application) => <article className="application-card" key={application.id}><div className="application-head"><i>{application.applicantAvatar}</i><div><strong>{application.applicantName} {application.applicantVerified && <b>✓</b>}</strong><small>{application.applicantSchool} · {application.applicantMajor} · {tv(formatRelativeTime(application.createdAt))}</small></div><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span></div><p>{application.message}</p><dl><div><dt>{t("可完成时间")}</dt><dd>{application.availableTime}</dd></div><div><dt>{t("信用评价")}</dt><dd>{t("MVP 阶段暂无历史评价")}</dd></div></dl>{application.status === "pending" && <div className="application-actions"><button className="primary-button small" onClick={() => handleApplicationDecision(application, "accepted")}>{t("接受")}</button><button className="ghost-outline" onClick={() => handleApplicationDecision(application, "rejected")}>{t("拒绝")}</button></div>}{application.status === "accepted" && <div className="application-actions"><button className="primary-button small" onClick={() => openContactInfo(contactFromApplication(application))}>{t("联系对方")}</button></div>}</article>)}</section>}
+              {managedTaskId && <section className="application-panel"><div className="table-title"><h2>{t("申请管理")}</h2><span>{managedTaskApplications.length} {t("份申请")}</span></div>{managedTaskApplications.length === 0 ? <div className="empty-state"><span>⌕</span><h3>{t("暂无申请")}</h3><p>{t("有同学申请后会出现在这里。")}</p></div> : managedTaskApplications.map((application) => <article className="application-card" key={application.id}><div className="application-head"><i>{application.applicantAvatar}</i><div><strong>{application.applicantName} {application.applicantVerified && <b>✓</b>}</strong><small>{application.applicantSchool} · {application.applicantMajor} · {tv(formatRelativeTime(application.createdAt))}</small></div><button className="mini-action" onClick={() => openPublicProfile(application.applicantId)}>{t("查看资料")}</button><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span></div><p>{application.message}</p><dl><div><dt>{t("可完成时间")}</dt><dd>{application.availableTime}</dd></div><div><dt>{t("信用评价")}</dt><dd>{t("暂无评分")}</dd></div></dl>{application.status === "pending" && <div className="application-actions"><button className="primary-button small" onClick={() => handleApplicationDecision(application, "accepted")}>{t("接受")}</button><button className="ghost-outline" onClick={() => handleApplicationDecision(application, "rejected")}>{t("拒绝")}</button></div>}{application.status === "accepted" && <div className="application-actions"><button className="primary-button small" onClick={() => openContactInfo(contactFromApplication(application))}>{t("联系对方")}</button></div>}</article>)}</section>}
             </div>
           ) : (
             <div className="task-table applied-table">
               <div className="table-title"><h2>{t("申请记录")}</h2><span>{t("状态有变化时会收到提醒")}</span></div>
               {appliedTasks.map((application) => (
-                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {tv(application.task.mode)} · {t("申请于")} {tv(formatRelativeTime(application.createdAt))}</small></div><b>{tv(application.task.reward)}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openContactInfo(contactFromAppliedTask(application))}>{t("联系对方")}</button>}{application.status === "accepted" && application.task.status === "completed" && <button onClick={() => openReviewTarget({ taskId: application.taskId, revieweeId: application.task.authorId, name: application.author.name })}>{hasReviewed(application.taskId, application.task.authorId) ? t("已评价") : t("评价发布者")}</button>}<button onClick={() => flash("申请详情页待上线")}>{t("查看详情")}</button></div></div>
+                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {tv(application.task.mode)} · {t("申请于")} {tv(formatRelativeTime(application.createdAt))}</small></div><b>{tv(application.task.reward)}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openContactInfo(contactFromAppliedTask(application))}>{t("联系对方")}</button>}{application.status === "accepted" && application.task.status === "in_progress" && <button onClick={() => application.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: application.taskId })}>{application.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}{application.status === "accepted" && application.task.status === "completed" && <button onClick={() => openReviewTarget({ taskId: application.taskId, revieweeId: application.task.authorId, name: application.author.name })}>{hasReviewed(application.taskId, application.task.authorId) ? t("已评价") : t("评价发布者")}</button>}<button onClick={() => { navigate("home"); setSelectedTask(tasks.find((task) => task.id === application.taskId) ?? null); }}>{t("查看详情")}</button></div></div>
               ))}
               {appliedTasks.length === 0 && <div className="empty-state"><span>⌕</span><h3>{t("还没有申请记录")}</h3><p>{t("申请任务后，会显示在这里。")}</p></div>}
             </div>
@@ -1484,11 +1670,12 @@ export default function Home() {
 
       <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>{t("发现任务")}</button><button className={view === "mine" ? "active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}><span>▤</span>{t("我的任务")}</button><button className="mobile-add" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>＋</button><button className={view === "messages" ? "active" : ""} onClick={() => requireAuth(() => navigate("messages"), "请先登录后查看消息")}><span>◇</span>{t("消息")}</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>{t("我的")}</button></nav>
 
-      <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>{t("连接每一个 UC 校园，让需求找到回应。")}</p><span>Demo v0.1 · 2026</span></div></footer>
+      <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>{t("连接每一个 UC 校园，让需求找到回应。")}</p><span>UC Connect · 2026</span></div></footer>
       {notice && <div className="toast">{tv(notice)}</div>}
       {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("欢迎来到 UC Connect")}</h2><p>{t("登录后即可发布需求、提交申请和管理任务。")}</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; {t("使用 Google 登录")}</button><div className="or"><span />{t("或")}<span /></div><form onSubmit={signInWithPassword}><label>{t("邮箱地址")}<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>{t("密码")}<input required name="password" minLength={6} placeholder={t("至少 6 位密码")} type="password" /></label><button className="primary-button wide" type="submit">{t("登录 / 注册")}</button></form><small>{t("新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。")}</small></section></div>}
       {showEditProfile && <div className="modal-backdrop" onMouseDown={() => setShowEditProfile(false)}><section className="login-modal edit-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowEditProfile(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("编辑资料")}</h2><p>{t("这些联系方式只会在双方匹配后展示给对方。")}</p><form className="profile-contact-form" key={`edit-${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>{t("显示名称")}<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>{t("专业")}<input name="major" defaultValue={profileContact.major} placeholder={t("例如：Data Science")} /></label><label>{t("联系邮箱")}<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>{t("手机号")}<input name="phone" defaultValue={profileContact.phone} placeholder={t("可选")} /></label><label>{t("微信号")}<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder={t("可选")} /></label><button className="primary-button wide" type="submit">{t("保存资料")}</button></form><small>{t("建议至少填写邮箱或微信，方便任务匹配后联系。")}</small></section></div>}
-      {contactInfo && <div className="modal-backdrop" onMouseDown={() => setContactInfo(null)}><section className="login-modal contact-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setContactInfo(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("联系")} {contactInfo.name}</h2><p>{t("UC Connect MVP 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。")}</p><div className="contact-list"><div><span>{t("邮箱")}</span><strong>{contactInfo.email || t("未填写")}</strong></div><div><span>{t("手机号")}</span><strong>{contactInfo.phone || t("未填写")}</strong></div><div><span>{t("微信号")}</span><strong>{contactInfo.wechat || t("未填写")}</strong></div></div><small>{t("请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。")}</small></section></div>}
+      {publicProfile && <div className="modal-backdrop" onMouseDown={() => setPublicProfile(null)}><section className="login-modal public-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setPublicProfile(null)}>×</button><div className="public-profile-head"><i>{publicProfile.initials}</i><span><small>{t("公开资料")}</small><h2>{publicProfile.name} {publicProfile.verified && <b>✓</b>}</h2><p>{publicProfile.school} · {publicProfile.major || t("未填写")}</p></span></div><div className="public-stats"><div><strong>{publicProfile.completedCount}</strong><span>{t("完成次数")}</span></div><div><strong>{publicProfile.rating.count ? publicProfile.rating.average.toFixed(1) : "-"}</strong><span>{t("平均评分")}</span></div><div><strong>{publicProfile.rating.count}</strong><span>{t("条评分")}</span></div></div><p className="profile-note">{t("联系方式仅在任务匹配后展示。")}</p></section></div>}
+      {contactInfo && <div className="modal-backdrop" onMouseDown={() => setContactInfo(null)}><section className="login-modal contact-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setContactInfo(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("联系")} {contactInfo.name}</h2><p>{t("UC Connect 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。")}</p><div className="contact-list"><div><span>{t("邮箱")}</span><strong>{contactInfo.email || t("未填写")}</strong></div><div><span>{t("手机号")}</span><strong>{contactInfo.phone || t("未填写")}</strong></div><div><span>{t("微信号")}</span><strong>{contactInfo.wechat || t("未填写")}</strong></div></div><small>{t("请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。")}</small></section></div>}
       {reviewTarget && <div className="modal-backdrop" onMouseDown={() => setReviewTarget(null)}><section className="login-modal rating-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setReviewTarget(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("评价")} {reviewTarget.name}</h2><p>{t("这次先只打星，不写评论。")}</p><div className="star-picker" role="radiogroup" aria-label={t("评分")}>{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" className={value <= selectedRating ? "active" : ""} onClick={() => setSelectedRating(value)} aria-label={`${value} ${t("评分")}`}>★</button>)}</div><button className="primary-button wide" onClick={submitRating}>{t("提交")} {selectedRating} {t("星评价")}</button></section></div>}
     </main>
   );
