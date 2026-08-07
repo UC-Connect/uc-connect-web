@@ -24,7 +24,7 @@ button { color:inherit; }
 .primary-button.wide,.text-button.wide { width:100%; }
 .hero { overflow:hidden; background:linear-gradient(110deg,#f1f5f9 0%,#f9faf7 56%,#f7f0df 100%); border-bottom:1px solid #e4e7e5; position:relative; }
 .hero:before { content:""; position:absolute; width:420px; height:420px; border:1px solid rgba(18,62,117,.08); border-radius:50%; right:-100px; top:-210px; box-shadow:0 0 0 65px rgba(18,62,117,.025),0 0 0 135px rgba(18,62,117,.02); }
-.hero-grid { position:relative; max-width:1180px; min-height:580px; margin:auto; padding:72px 24px; display:grid; grid-template-columns:1.08fr .92fr; gap:74px; align-items:center; }
+.hero-grid { position:relative; max-width:1180px; min-height:520px; margin:auto; padding:64px 24px; display:grid; grid-template-columns:1.08fr .92fr; gap:74px; align-items:center; }
 .eyebrow { display:inline-flex; align-items:center; gap:8px; color:var(--blue); font-size:13px; font-weight:750; letter-spacing:.05em; text-transform:uppercase; }
 .pulse { width:8px;height:8px;border-radius:50%;background:#35a36c;box-shadow:0 0 0 4px rgba(53,163,108,.12); }
 .hero h1 { margin:20px 0 18px; color:var(--navy); font-size:58px; line-height:1.12; letter-spacing:-3.1px; font-weight:780; }

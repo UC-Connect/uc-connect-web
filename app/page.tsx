@@ -919,16 +919,11 @@ export default function Home() {
           <section className="hero">
             <div className="hero-grid">
               <div className="hero-copy">
-                <span className="eyebrow"><span className="pulse" /> UCB · UCSD · UCLA 首发</span>
                 <h1>让每一个需求，<br /><em>找到对的人回应。</em></h1>
                 <p>连接 UC 校园里的同学，发布需求、分享经验、互相帮忙。简单一点，真诚一点。</p>
                 <div className="hero-actions">
                   <button className="primary-button" onClick={() => document.getElementById("task-list")?.scrollIntoView({ behavior: "smooth" })}>浏览附近任务 <span>→</span></button>
                   <button className="text-button" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>我有一个需求</button>
-                </div>
-                <div className="trust-row">
-                  <span className="avatar-stack"><i>MC</i><i>EL</i><i>SW</i></span>
-                  <span><strong>MVP 测试版</strong><br />真实发布内容会同步到数据库</span>
                 </div>
               </div>
               <div className="hero-board" aria-label="热门任务预览">
@@ -940,7 +935,7 @@ export default function Home() {
                     <strong className={task.reward.includes("互助") ? "free" : ""}>{task.reward}</strong>
                   </button>
                 ))}
-                <div className="board-footer"><span>真实发布 · 学校认证 · 申请记录</span><span>♡</span></div>
+                <div className="board-footer"><span></span><span>♡</span></div>
               </div>
             </div>
           </section>
