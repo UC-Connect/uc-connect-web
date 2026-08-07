@@ -199,7 +199,15 @@ with check (auth.uid() = id);
 drop policy if exists "Open tasks are readable by everyone" on public.tasks;
 create policy "Open tasks are readable by everyone"
 on public.tasks for select
-using (status = 'open' or auth.uid() = author_id);
+using (
+  status = 'open'
+  or auth.uid() = author_id
+  or exists (
+    select 1 from public.applications
+    where applications.task_id = tasks.id
+    and applications.applicant_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can create their own tasks" on public.tasks;
 create policy "Users can create their own tasks"

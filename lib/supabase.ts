@@ -41,7 +41,8 @@ export type ApplicationRow = {
   available_time: string;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   created_at: string;
-  tasks?: Pick<TaskRow, "title" | "school" | "mode" | "reward_amount" | "reward_type" | "created_at"> | null;
+  tasks?: Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "created_at"> | null;
+  profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major"> | null;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

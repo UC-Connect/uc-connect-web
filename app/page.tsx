@@ -21,6 +21,7 @@ type Task = {
   location: string;
   due: string;
   tone: string;
+  status: TaskRow["status"];
 };
 
 const demoTasks: Task[] = [
@@ -40,6 +41,7 @@ const demoTasks: Task[] = [
     location: "UC Berkeley · Blackwell Hall",
     due: "8 月 8 日前",
     tone: "blue",
+    status: "open",
   },
   {
     id: "demo-2",
@@ -57,6 +59,7 @@ const demoTasks: Task[] = [
     location: "线上 · Zoom / 微信语音",
     due: "本周内",
     tone: "teal",
+    status: "open",
   },
   {
     id: "demo-3",
@@ -74,6 +77,7 @@ const demoTasks: Task[] = [
     location: "UCLA · Westwood",
     due: "8 月 10 日",
     tone: "gold",
+    status: "open",
   },
   {
     id: "demo-4",
@@ -91,6 +95,7 @@ const demoTasks: Task[] = [
     location: "UC Berkeley · Sather Gate",
     due: "本周五",
     tone: "violet",
+    status: "open",
   },
   {
     id: "demo-5",
@@ -108,6 +113,7 @@ const demoTasks: Task[] = [
     location: "线上",
     due: "下周前",
     tone: "coral",
+    status: "open",
   },
   {
     id: "demo-6",
@@ -125,6 +131,7 @@ const demoTasks: Task[] = [
     location: "UCSD · Sixth College",
     due: "三天内",
     tone: "teal",
+    status: "open",
   },
 ];
 
@@ -155,6 +162,22 @@ type AppliedTask = {
   };
 };
 
+type ReceivedApplication = {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  taskStatus: TaskRow["status"];
+  applicantName: string;
+  applicantAvatar: string;
+  applicantSchool: string;
+  applicantMajor: string;
+  applicantVerified: boolean;
+  message: string;
+  availableTime: string;
+  status: ApplicationRow["status"];
+  createdAt: string;
+};
+
 function formatReward(task: Pick<TaskRow, "reward_amount" | "reward_type">) {
   if (task.reward_type === "mutual_help") return "免费互助";
   return task.reward_amount === null ? "$0" : `$${Number(task.reward_amount).toFixed(0)}`;
@@ -181,6 +204,13 @@ function formatApplicationStatus(status: ApplicationRow["status"]) {
   return "已撤回";
 }
 
+function formatTaskStatus(status: TaskRow["status"]) {
+  if (status === "open") return "招募中";
+  if (status === "in_progress" || status === "matched") return "进行中";
+  if (status === "completed") return "已完成";
+  return "已取消";
+}
+
 function mapTaskRow(row: TaskRow): Task {
   return {
     id: row.id,
@@ -199,6 +229,7 @@ function mapTaskRow(row: TaskRow): Task {
     location: row.location,
     due: formatDueDate(row.due_date),
     tone: row.school === "UCB" ? "blue" : row.school === "UCSD" ? "teal" : "gold",
+    status: row.status,
   };
 }
 
@@ -216,6 +247,27 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
       reward: formatReward(row.tasks),
       createdAt: row.tasks.created_at,
     },
+  };
+}
+
+function mapReceivedApplicationRow(row: ApplicationRow): ReceivedApplication | null {
+  if (!row.tasks) return null;
+
+  const task = row.tasks as Pick<TaskRow, "id" | "title" | "status">;
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    taskTitle: task.title,
+    taskStatus: task.status,
+    applicantName: row.profiles?.display_name ?? "UC Student",
+    applicantAvatar: row.profiles?.avatar_initials ?? "UC",
+    applicantSchool: row.profiles?.school ?? "UC",
+    applicantMajor: row.profiles?.major ?? "未填写专业",
+    applicantVerified: row.profiles?.verified_uc_email ?? false,
+    message: row.message,
+    availableTime: row.available_time,
+    status: row.status,
+    createdAt: row.created_at,
   };
 }
 
@@ -252,7 +304,7 @@ function getUserSchool(user: User | null) {
 }
 
 export default function Home() {
-  const [view, setView] = useState<"home" | "publish" | "mine" | "profile">("home");
+  const [view, setView] = useState<"home" | "publish" | "mine" | "profile" | "messages">("home");
   const [school, setSchool] = useState("全部 UC");
   const [category, setCategory] = useState("全部任务");
   const [query, setQuery] = useState("");
@@ -268,6 +320,12 @@ export default function Home() {
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [lastPublishedTask, setLastPublishedTask] = useState<Task | null>(null);
   const [appliedTasks, setAppliedTasks] = useState<AppliedTask[]>([]);
+  const [receivedApplications, setReceivedApplications] = useState<ReceivedApplication[]>([]);
+  const [managedTaskId, setManagedTaskId] = useState<string | null>(null);
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | TaskRow["status"]>("all");
+  const [messageReadAt, setMessageReadAt] = useState(() => (
+    typeof window === "undefined" ? 0 : Number(window.localStorage.getItem("uc-connect-message-read-at") ?? 0)
+  ));
   const [publishDraft, setPublishDraft] = useState<PublishDraft>(() => readPublishDraft());
   const [publishMode, setPublishMode] = useState<"线上" | "线下">(publishDraft.mode ?? "线下");
   const [rewardType, setRewardType] = useState<"paid" | "mutual_help">(publishDraft.reward_type ?? "paid");
@@ -280,33 +338,66 @@ export default function Home() {
       setUser(session?.user ?? null);
     });
 
-    loadTasks();
-
     return () => listener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
+    loadTasks();
+
     if (user) {
       loadApplications();
+      loadReceivedApplications();
       return;
     }
 
     setAppliedTasks([]);
+    setReceivedApplications([]);
   }, [user]);
 
-  const filtered = useMemo(() => tasks.filter((task) => {
+  const discoverableTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
+
+  const filtered = useMemo(() => discoverableTasks.filter((task) => {
     const schoolMatch = school === "全部 UC" || task.school === school;
     const categoryMatch = category === "全部任务" || task.category === category;
     const queryMatch = task.title.toLowerCase().includes(query.toLowerCase()) || task.category.includes(query);
     return schoolMatch && categoryMatch && queryMatch;
-  }), [tasks, school, category, query]);
+  }), [discoverableTasks, school, category, query]);
 
   const postedTasks = useMemo(() => {
     if (!user) return [];
     return tasks.filter((task) => task.authorId === user.id);
   }, [tasks, user]);
 
-  const featuredTasks = useMemo(() => tasks.slice(0, 3), [tasks]);
+  const visiblePostedTasks = useMemo(() => (
+    taskStatusFilter === "all" ? postedTasks : postedTasks.filter((task) => task.status === taskStatusFilter)
+  ), [postedTasks, taskStatusFilter]);
+
+  const featuredTasks = useMemo(() => discoverableTasks.slice(0, 3), [discoverableTasks]);
+
+  const managedTaskApplications = useMemo(() => (
+    receivedApplications.filter((application) => application.taskId === managedTaskId)
+  ), [receivedApplications, managedTaskId]);
+
+  const openPostedCount = postedTasks.filter((task) => task.status === "open").length;
+  const inProgressPostedCount = postedTasks.filter((task) => task.status === "in_progress" || task.status === "matched").length;
+  const completedPostedCount = postedTasks.filter((task) => task.status === "completed").length;
+  const unreadNotifications = [...receivedApplications, ...appliedTasks].filter((item) => new Date(item.createdAt).getTime() > messageReadAt).length;
+  const taskNotifications = useMemo(() => [
+    ...receivedApplications.map((application) => ({
+      id: `received-${application.id}`,
+      title: application.status === "pending" ? "收到新的任务申请" : "申请状态已处理",
+      body: `${application.applicantName} 申请了「${application.taskTitle}」：${application.message}`,
+      time: application.createdAt,
+      status: formatApplicationStatus(application.status),
+    })),
+    ...appliedTasks.map((application) => ({
+      id: `applied-${application.id}`,
+      title: application.status === "pending" ? "申请已提交" : `申请${formatApplicationStatus(application.status)}`,
+      body: `你申请的「${application.task.title}」当前状态：${formatApplicationStatus(application.status)}`,
+      time: application.createdAt,
+      status: formatApplicationStatus(application.status),
+    })),
+  ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [receivedApplications, appliedTasks]);
 
   function requireAuth(action: () => void, message = "请先登录后继续") {
     if (!user) {
@@ -321,11 +412,16 @@ export default function Home() {
   async function loadTasks() {
     if (!supabase) return;
     setIsLoadingTasks(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("tasks")
       .select("*, profiles(display_name, avatar_initials, verified_uc_email)")
-      .eq("status", "open")
       .order("created_at", { ascending: false });
+
+    query = user
+      ? query.or(`status.eq.open,author_id.eq.${user.id}`)
+      : query.eq("status", "open");
+
+    const { data, error } = await query;
 
     setIsLoadingTasks(false);
 
@@ -342,7 +438,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("*, tasks(title, school, mode, reward_amount, reward_type, created_at)")
+      .select("*, tasks(id, title, school, mode, reward_amount, reward_type, status, created_at)")
       .eq("applicant_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -354,16 +450,42 @@ export default function Home() {
     setAppliedTasks(((data ?? []) as ApplicationRow[]).map(mapApplicationRow).filter((item): item is AppliedTask => Boolean(item)));
   }
 
+  async function loadReceivedApplications() {
+    if (!supabase || !user) return;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, profiles(display_name, avatar_initials, verified_uc_email, school, major), tasks(id, author_id, title, status)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      flash("读取收到的申请失败");
+      return;
+    }
+
+    setReceivedApplications(((data ?? []) as ApplicationRow[])
+      .filter((row) => row.tasks?.author_id === user.id)
+      .map(mapReceivedApplicationRow)
+      .filter((item): item is ReceivedApplication => Boolean(item)));
+  }
+
   function flash(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2400);
   }
 
-  function navigate(next: "home" | "publish" | "mine" | "profile") {
+  function navigate(next: "home" | "publish" | "mine" | "profile" | "messages") {
     setView(next);
     setSelectedTask(null);
     setPublished(false);
+    if (next === "messages") markMessagesRead();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function markMessagesRead() {
+    const now = Date.now();
+    setMessageReadAt(now);
+    window.localStorage.setItem("uc-connect-message-read-at", String(now));
   }
 
   function openProfile() {
@@ -563,6 +685,84 @@ export default function Home() {
     loadApplications();
   }
 
+  async function refreshUserWorkflows() {
+    await loadTasks();
+    if (user) {
+      await loadApplications();
+      await loadReceivedApplications();
+    }
+  }
+
+  async function handleApplicationDecision(application: ReceivedApplication, decision: "accepted" | "rejected") {
+    if (!supabase || !user) return;
+
+    if (decision === "accepted" && !window.confirm("接受这位申请人后，任务会进入进行中，其他待处理申请会自动标记为未通过。确认接受吗？")) {
+      return;
+    }
+
+    const { error: applicationError } = await supabase
+      .from("applications")
+      .update({ status: decision })
+      .eq("id", application.id);
+
+    if (applicationError) {
+      flash(applicationError.message);
+      return;
+    }
+
+    if (decision === "accepted") {
+      const { error: rejectOthersError } = await supabase
+        .from("applications")
+        .update({ status: "rejected" })
+        .eq("task_id", application.taskId)
+        .eq("status", "pending")
+        .neq("id", application.id);
+
+      if (rejectOthersError) {
+        flash(rejectOthersError.message);
+        return;
+      }
+
+      const { error: taskError } = await supabase
+        .from("tasks")
+        .update({ status: "in_progress" })
+        .eq("id", application.taskId);
+
+      if (taskError) {
+        flash(taskError.message);
+        return;
+      }
+    }
+
+    await refreshUserWorkflows();
+    flash(decision === "accepted" ? "已接受申请，任务进入进行中" : "已拒绝申请");
+  }
+
+  async function updateTaskStatus(task: Task, status: TaskRow["status"]) {
+    if (!supabase || !user) return;
+
+    const message = status === "cancelled"
+      ? "确认关闭这个任务吗？关闭后其他同学将不能继续申请。"
+      : status === "completed"
+        ? "确认任务已经完成吗？完成后可以进入评价流程。"
+        : "确认更新任务状态吗？";
+
+    if (!window.confirm(message)) return;
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ status })
+      .eq("id", task.id);
+
+    if (error) {
+      flash(error.message);
+      return;
+    }
+
+    await refreshUserWorkflows();
+    flash(status === "completed" ? "任务已完成" : "任务状态已更新");
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -574,7 +774,7 @@ export default function Home() {
           <nav className="desktop-nav" aria-label="主导航">
             <button className={view === "home" ? "nav-active" : ""} onClick={() => navigate("home")}>发现任务</button>
             <button className={view === "mine" ? "nav-active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}>我的任务</button>
-            <button onClick={() => flash("你暂时没有新消息")}>消息</button>
+            <button className="message-nav-button" onClick={() => requireAuth(() => navigate("messages"), "请先登录后查看消息")}>消息{unreadNotifications > 0 && <b>{unreadNotifications}</b>}</button>
           </nav>
           <div className="header-actions">
             <button className="ghost-button" onClick={() => user ? flash(`已登录：${user.email}`) : setShowLogin(true)}>{user ? "已登录" : "登录"}</button>
@@ -740,14 +940,15 @@ export default function Home() {
           <div className="mine-tabs"><button className={mineTab === "posted" ? "active" : ""} onClick={() => setMineTab("posted")}>我发布的 <b>{postedTasks.length}</b></button><button className={mineTab === "applied" ? "active" : ""} onClick={() => setMineTab("applied")}>我申请的 <b>{appliedTasks.length}</b></button></div>
           {mineTab === "posted" ? (
             <div className="dashboard-layout">
-              <div className="status-cards"><div><span>招募中</span><strong>{postedTasks.length}</strong><small>共 {postedTasks.reduce((sum, task) => sum + task.applicants, 0)} 份申请</small></div><div><span>进行中</span><strong>0</strong><small>等待双方完成</small></div><div><span>本月完成</span><strong>0</strong><small>MVP 数据开始记录</small></div></div>
+              <div className="status-cards"><button className={taskStatusFilter === "open" ? "active" : ""} onClick={() => setTaskStatusFilter(taskStatusFilter === "open" ? "all" : "open")}><span>招募中</span><strong>{openPostedCount}</strong><small>共 {postedTasks.reduce((sum, task) => sum + task.applicants, 0)} 份申请</small></button><button className={taskStatusFilter === "in_progress" ? "active" : ""} onClick={() => setTaskStatusFilter(taskStatusFilter === "in_progress" ? "all" : "in_progress")}><span>进行中</span><strong>{inProgressPostedCount}</strong><small>等待双方完成</small></button><button className={taskStatusFilter === "completed" ? "active" : ""} onClick={() => setTaskStatusFilter(taskStatusFilter === "completed" ? "all" : "completed")}><span>已完成</span><strong>{completedPostedCount}</strong><small>可查看记录和评价</small></button></div>
               <div className="task-table">
                 <div className="table-title"><h2>最近发布</h2><button onClick={() => navigate("publish")}>＋ 新需求</button></div>
-                {postedTasks.map((task) => (
-                  <div className="task-row" key={task.id}><span className="status open">招募中</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看 →</button></div>
+                {visiblePostedTasks.map((task) => (
+                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{formatTaskStatus(task.status)}</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看详情</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>查看申请（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>编辑</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>关闭招募</button>}{task.status === "in_progress" && <button onClick={() => flash("联系功能待上线")}>联系对方</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>确认完成</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>查看记录</button>}{task.status === "completed" && <button onClick={() => flash("评价功能待上线")}>评价对方</button>}</div></div>
                 ))}
-                {postedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>还没有发布任务</h3><p>发布第一个需求后，会显示在这里。</p></div>}
+                {visiblePostedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>没有对应状态的任务</h3><p>发布或切换状态筛选后，会显示在这里。</p></div>}
               </div>
+              {managedTaskId && <section className="application-panel"><div className="table-title"><h2>申请管理</h2><span>{managedTaskApplications.length} 份申请</span></div>{managedTaskApplications.length === 0 ? <div className="empty-state"><span>⌕</span><h3>暂无申请</h3><p>有同学申请后会出现在这里。</p></div> : managedTaskApplications.map((application) => <article className="application-card" key={application.id}><div className="application-head"><i>{application.applicantAvatar}</i><div><strong>{application.applicantName} {application.applicantVerified && <b>✓</b>}</strong><small>{application.applicantSchool} · {application.applicantMajor} · {formatRelativeTime(application.createdAt)}</small></div><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span></div><p>{application.message}</p><dl><div><dt>可完成时间</dt><dd>{application.availableTime}</dd></div><div><dt>信用评价</dt><dd>MVP 阶段暂无历史评价</dd></div></dl>{application.status === "pending" && <div className="application-actions"><button className="primary-button small" onClick={() => handleApplicationDecision(application, "accepted")}>接受</button><button className="ghost-outline" onClick={() => handleApplicationDecision(application, "rejected")}>拒绝</button></div>}</article>)}</section>}
             </div>
           ) : (
             <div className="task-table applied-table">
@@ -761,6 +962,20 @@ export default function Home() {
         </section>
       )}
 
+      {view === "messages" && (
+        <section className="app-page messages-page">
+          <div className="page-intro compact"><span className="section-kicker">MESSAGES</span><h1>消息</h1><p>任务申请和状态更新会出现在这里。</p></div>
+          <div className="message-tabs"><button className="active">任务通知 <b>{taskNotifications.length}</b></button><button onClick={() => flash("聊天消息下一步接入")}>聊天消息</button></div>
+          <div className="task-table message-list">
+            <div className="table-title"><h2>任务通知</h2><span>{unreadNotifications > 0 ? `${unreadNotifications} 条未读` : "已全部读完"}</span></div>
+            {taskNotifications.map((notification) => (
+              <article className="message-item" key={notification.id}><span className="message-dot" /><div><strong>{notification.title}</strong><p>{notification.body}</p><small>{notification.status} · {formatRelativeTime(notification.time)}</small></div></article>
+            ))}
+            {taskNotifications.length === 0 && <div className="empty-state"><span>◇</span><h3>还没有消息</h3><p>任务申请和状态更新会出现在这里。</p></div>}
+          </div>
+        </section>
+      )}
+
       {view === "profile" && (
         <section className="app-page profile-page">
           <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><button className="ghost-outline" onClick={signOut}>退出登录</button></div>
@@ -771,7 +986,7 @@ export default function Home() {
         </section>
       )}
 
-      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}><span>▤</span>任务</button><button className="mobile-add" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>＋</button><button onClick={() => flash("你暂时没有新消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>我的</button></nav>
+      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}><span>▤</span>任务</button><button className="mobile-add" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>＋</button><button className={view === "messages" ? "active" : ""} onClick={() => requireAuth(() => navigate("messages"), "请先登录后查看消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>我的</button></nav>
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
