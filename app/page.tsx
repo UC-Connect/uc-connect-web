@@ -360,6 +360,7 @@ export default function Home() {
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | TaskRow["status"]>("all");
   const [profileContact, setProfileContact] = useState<ProfileContact>({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [messageReadAt, setMessageReadAt] = useState(() => (
     typeof window === "undefined" ? 0 : Number(window.localStorage.getItem("uc-connect-message-read-at") ?? 0)
   ));
@@ -608,6 +609,7 @@ export default function Home() {
       wechat_id: payload.wechat_id ?? "",
     });
     await refreshUserWorkflows();
+    setShowEditProfile(false);
     flash("联系方式已保存");
   }
 
@@ -1108,9 +1110,9 @@ export default function Home() {
 
       {view === "profile" && (
         <section className="app-page profile-page">
-          <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><button className="ghost-outline" onClick={signOut}>退出登录</button></div>
+          <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{profileContact.display_name || getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><div className="profile-hero-actions"><button className="ghost-outline" onClick={() => setShowEditProfile(true)}>编辑资料</button><button className="ghost-outline" onClick={signOut}>退出登录</button></div></div>
           <div className="profile-layout">
-            <aside className="profile-sidebar"><h3>联系方式</h3><p>这些信息只会在双方匹配后用于联系，不会在公开任务列表展示。</p><form className="profile-contact-form" key={`${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>显示名称<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>专业<input name="major" defaultValue={profileContact.major} placeholder="例如：Data Science" /></label><label>联系邮箱<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>手机号<input name="phone" defaultValue={profileContact.phone} placeholder="可选" /></label><label>微信号<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder="可选" /></label><button className="primary-button small" type="submit">保存联系方式</button></form><dl><div><dt>账号邮箱</dt><dd>{user?.email}</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
+            <aside className="profile-sidebar"><h3>资料摘要</h3><p>联系方式只会在双方匹配后展示给对方，不会出现在公开任务列表。</p><dl><div><dt>显示名称</dt><dd>{profileContact.display_name || getUserName(user)}</dd></div><div><dt>专业</dt><dd>{profileContact.major || "未填写"}</dd></div><div><dt>联系邮箱</dt><dd>{profileContact.contact_email || user?.email || "未填写"}</dd></div><div><dt>手机号</dt><dd>{profileContact.phone || "未填写"}</dd></div><div><dt>微信号</dt><dd>{profileContact.wechat_id || "未填写"}</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
             <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>发布任务</span></div><div><strong>{appliedTasks.length}</strong><span>申请任务</span></div><div><strong>0</strong><span>完成任务</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>待上线</span></div><div className="empty-state"><span>☆</span><h3>评价功能待上线</h3><p>完成任务后，这里会展示真实评价。</p></div></div></div>
           </div>
         </section>
@@ -1121,6 +1123,7 @@ export default function Home() {
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
       {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={signInWithPassword}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>密码<input required name="password" minLength={6} placeholder="至少 6 位密码" type="password" /></label><button className="primary-button wide" type="submit">登录 / 注册</button></form><small>新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。</small></section></div>}
+      {showEditProfile && <div className="modal-backdrop" onMouseDown={() => setShowEditProfile(false)}><section className="login-modal edit-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowEditProfile(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>编辑资料</h2><p>这些联系方式只会在双方匹配后展示给对方。</p><form className="profile-contact-form" key={`edit-${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>显示名称<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>专业<input name="major" defaultValue={profileContact.major} placeholder="例如：Data Science" /></label><label>联系邮箱<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>手机号<input name="phone" defaultValue={profileContact.phone} placeholder="可选" /></label><label>微信号<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder="可选" /></label><button className="primary-button wide" type="submit">保存资料</button></form><small>建议至少填写邮箱或微信，方便任务匹配后联系。</small></section></div>}
       {contactInfo && <div className="modal-backdrop" onMouseDown={() => setContactInfo(null)}><section className="login-modal contact-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setContactInfo(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>联系 {contactInfo.name}</h2><p>UC Connect MVP 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。</p><div className="contact-list"><div><span>邮箱</span><strong>{contactInfo.email || "未填写"}</strong></div><div><span>手机号</span><strong>{contactInfo.phone || "未填写"}</strong></div><div><span>微信号</span><strong>{contactInfo.wechat || "未填写"}</strong></div></div><small>请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。</small></section></div>}
     </main>
   );
