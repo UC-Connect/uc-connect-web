@@ -950,7 +950,10 @@ export default function Home() {
     ]);
 
     if (receivedError || mineError) {
-      flash("读取评价失败");
+      console.warn("Failed to load reviews", receivedError ?? mineError);
+      setReceivedReviews([]);
+      setMyReviews([]);
+      setReviewSummary({ average: 0, count: 0 });
       return;
     }
 
