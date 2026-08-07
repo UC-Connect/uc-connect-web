@@ -7,6 +7,9 @@ export type ProfileRow = {
   display_name: string;
   school: School;
   major: string | null;
+  contact_email: string | null;
+  phone: string | null;
+  wechat_id: string | null;
   avatar_initials: string;
   bio: string | null;
   verified_uc_email: boolean;
@@ -41,8 +44,10 @@ export type ApplicationRow = {
   available_time: string;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   created_at: string;
-  tasks?: Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "created_at"> | null;
-  profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major"> | null;
+  tasks?: (Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "created_at"> & {
+    profiles?: Pick<ProfileRow, "display_name" | "contact_email" | "phone" | "wechat_id"> | null;
+  }) | null;
+  profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major" | "contact_email" | "phone" | "wechat_id"> | null;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

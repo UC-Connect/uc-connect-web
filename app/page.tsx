@@ -161,6 +161,12 @@ type AppliedTask = {
     reward: string;
     createdAt: string;
   };
+  author: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    wechat: string | null;
+  };
 };
 
 type ReceivedApplication = {
@@ -173,10 +179,28 @@ type ReceivedApplication = {
   applicantSchool: string;
   applicantMajor: string;
   applicantVerified: boolean;
+  contactEmail: string | null;
+  phone: string | null;
+  wechat: string | null;
   message: string;
   availableTime: string;
   status: ApplicationRow["status"];
   createdAt: string;
+};
+
+type ContactInfo = {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  wechat: string | null;
+};
+
+type ProfileContact = {
+  display_name: string;
+  major: string;
+  contact_email: string;
+  phone: string;
+  wechat_id: string;
 };
 
 function formatReward(task: Pick<TaskRow, "reward_amount" | "reward_type">) {
@@ -249,6 +273,12 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
       reward: formatReward(row.tasks),
       createdAt: row.tasks.created_at,
     },
+    author: {
+      name: row.tasks.profiles?.display_name ?? "任务发布者",
+      email: row.tasks.profiles?.contact_email ?? null,
+      phone: row.tasks.profiles?.phone ?? null,
+      wechat: row.tasks.profiles?.wechat_id ?? null,
+    },
   };
 }
 
@@ -266,6 +296,9 @@ function mapReceivedApplicationRow(row: ApplicationRow): ReceivedApplication | n
     applicantSchool: row.profiles?.school ?? "UC",
     applicantMajor: row.profiles?.major ?? "未填写专业",
     applicantVerified: row.profiles?.verified_uc_email ?? false,
+    contactEmail: row.profiles?.contact_email ?? null,
+    phone: row.profiles?.phone ?? null,
+    wechat: row.profiles?.wechat_id ?? null,
     message: row.message,
     availableTime: row.available_time,
     status: row.status,
@@ -325,6 +358,8 @@ export default function Home() {
   const [receivedApplications, setReceivedApplications] = useState<ReceivedApplication[]>([]);
   const [managedTaskId, setManagedTaskId] = useState<string | null>(null);
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | TaskRow["status"]>("all");
+  const [profileContact, setProfileContact] = useState<ProfileContact>({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
+  const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [messageReadAt, setMessageReadAt] = useState(() => (
     typeof window === "undefined" ? 0 : Number(window.localStorage.getItem("uc-connect-message-read-at") ?? 0)
   ));
@@ -347,6 +382,7 @@ export default function Home() {
     loadTasks();
 
     if (user) {
+      loadProfile();
       loadApplications();
       loadReceivedApplications();
       return;
@@ -354,6 +390,7 @@ export default function Home() {
 
     setAppliedTasks([]);
     setReceivedApplications([]);
+    setProfileContact({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   }, [user]);
 
   const discoverableTasks = useMemo(() => tasks.filter((task) => task.status === "open"), [tasks]);
@@ -379,6 +416,14 @@ export default function Home() {
   const managedTaskApplications = useMemo(() => (
     receivedApplications.filter((application) => application.taskId === managedTaskId)
   ), [receivedApplications, managedTaskId]);
+
+  const acceptedApplicationByTaskId = useMemo(() => {
+    const map = new Map<string, ReceivedApplication>();
+    receivedApplications.forEach((application) => {
+      if (application.status === "accepted") map.set(application.taskId, application);
+    });
+    return map;
+  }, [receivedApplications]);
 
   const openPostedCount = postedTasks.filter((task) => task.status === "open").length;
   const inProgressPostedCount = postedTasks.filter((task) => task.status === "in_progress" || task.status === "matched").length;
@@ -441,7 +486,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("*, tasks(id, author_id, title, school, mode, reward_amount, reward_type, status, created_at)")
+      .select("*, tasks(id, author_id, title, school, mode, reward_amount, reward_type, status, created_at, profiles(display_name, contact_email, phone, wechat_id))")
       .eq("applicant_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -454,6 +499,26 @@ export default function Home() {
       .filter((row) => row.tasks?.author_id !== user.id)
       .map(mapApplicationRow)
       .filter((item): item is AppliedTask => Boolean(item)));
+  }
+
+  async function loadProfile() {
+    if (!supabase || !user) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("display_name, major, contact_email, phone, wechat_id")
+      .eq("id", user.id)
+      .single();
+
+    if (error) return;
+
+    setProfileContact({
+      display_name: data.display_name ?? getUserName(user),
+      major: data.major ?? "",
+      contact_email: data.contact_email ?? user.email ?? "",
+      phone: data.phone ?? "",
+      wechat_id: data.wechat_id ?? "",
+    });
   }
 
   async function loadReceivedApplications() {
@@ -509,6 +574,41 @@ export default function Home() {
     setUser(null);
     navigate("home");
     flash("已退出登录");
+  }
+
+  async function saveProfileContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !user) return;
+
+    const form = new FormData(event.currentTarget);
+    const payload = {
+      id: user.id,
+      display_name: String(form.get("display_name") ?? getUserName(user)).trim() || getUserName(user),
+      school: getUserSchool(user) === "未设置学校" ? "UCB" : getUserSchool(user),
+      major: String(form.get("major") ?? "").trim() || null,
+      contact_email: String(form.get("contact_email") ?? "").trim() || user.email || null,
+      phone: String(form.get("phone") ?? "").trim() || null,
+      wechat_id: String(form.get("wechat_id") ?? "").trim() || null,
+      avatar_initials: getUserInitials(user),
+      verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
+    };
+
+    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+
+    if (error) {
+      flash(error.message);
+      return;
+    }
+
+    setProfileContact({
+      display_name: payload.display_name,
+      major: payload.major ?? "",
+      contact_email: payload.contact_email ?? "",
+      phone: payload.phone ?? "",
+      wechat_id: payload.wechat_id ?? "",
+    });
+    await refreshUserWorkflows();
+    flash("联系方式已保存");
   }
 
   async function signInWithPassword(event: FormEvent<HTMLFormElement>) {
@@ -769,6 +869,28 @@ export default function Home() {
     flash(status === "completed" ? "任务已完成" : "任务状态已更新");
   }
 
+  function openContactInfo(contact: ContactInfo) {
+    if (!contact.email && !contact.phone && !contact.wechat) {
+      flash("对方还没有填写联系方式");
+      return;
+    }
+
+    setContactInfo(contact);
+  }
+
+  function contactFromApplication(application: ReceivedApplication): ContactInfo {
+    return {
+      name: application.applicantName,
+      email: application.contactEmail,
+      phone: application.phone,
+      wechat: application.wechat,
+    };
+  }
+
+  function contactFromAppliedTask(application: AppliedTask): ContactInfo {
+    return application.author;
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -952,17 +1074,17 @@ export default function Home() {
               <div className="task-table">
                 <div className="table-title"><h2>最近发布</h2><button onClick={() => navigate("publish")}>＋ 新需求</button></div>
                 {visiblePostedTasks.map((task) => (
-                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{formatTaskStatus(task.status)}</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看详情</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>查看申请（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>编辑</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>关闭招募</button>}{task.status === "in_progress" && <button onClick={() => flash("联系功能待上线")}>联系对方</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>确认完成</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>查看记录</button>}{task.status === "completed" && <button onClick={() => flash("评价功能待上线")}>评价对方</button>}</div></div>
+                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{formatTaskStatus(task.status)}</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看详情</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>查看申请（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>编辑</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>关闭招募</button>}{task.status === "in_progress" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openContactInfo(contactFromApplication(accepted)) : flash("还没有已接受的申请人"); }}>联系对方</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>确认完成</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>查看记录</button>}{task.status === "completed" && <button onClick={() => flash("评价功能待上线")}>评价对方</button>}</div></div>
                 ))}
                 {visiblePostedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>没有对应状态的任务</h3><p>发布或切换状态筛选后，会显示在这里。</p></div>}
               </div>
-              {managedTaskId && <section className="application-panel"><div className="table-title"><h2>申请管理</h2><span>{managedTaskApplications.length} 份申请</span></div>{managedTaskApplications.length === 0 ? <div className="empty-state"><span>⌕</span><h3>暂无申请</h3><p>有同学申请后会出现在这里。</p></div> : managedTaskApplications.map((application) => <article className="application-card" key={application.id}><div className="application-head"><i>{application.applicantAvatar}</i><div><strong>{application.applicantName} {application.applicantVerified && <b>✓</b>}</strong><small>{application.applicantSchool} · {application.applicantMajor} · {formatRelativeTime(application.createdAt)}</small></div><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span></div><p>{application.message}</p><dl><div><dt>可完成时间</dt><dd>{application.availableTime}</dd></div><div><dt>信用评价</dt><dd>MVP 阶段暂无历史评价</dd></div></dl>{application.status === "pending" && <div className="application-actions"><button className="primary-button small" onClick={() => handleApplicationDecision(application, "accepted")}>接受</button><button className="ghost-outline" onClick={() => handleApplicationDecision(application, "rejected")}>拒绝</button></div>}</article>)}</section>}
+              {managedTaskId && <section className="application-panel"><div className="table-title"><h2>申请管理</h2><span>{managedTaskApplications.length} 份申请</span></div>{managedTaskApplications.length === 0 ? <div className="empty-state"><span>⌕</span><h3>暂无申请</h3><p>有同学申请后会出现在这里。</p></div> : managedTaskApplications.map((application) => <article className="application-card" key={application.id}><div className="application-head"><i>{application.applicantAvatar}</i><div><strong>{application.applicantName} {application.applicantVerified && <b>✓</b>}</strong><small>{application.applicantSchool} · {application.applicantMajor} · {formatRelativeTime(application.createdAt)}</small></div><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span></div><p>{application.message}</p><dl><div><dt>可完成时间</dt><dd>{application.availableTime}</dd></div><div><dt>信用评价</dt><dd>MVP 阶段暂无历史评价</dd></div></dl>{application.status === "pending" && <div className="application-actions"><button className="primary-button small" onClick={() => handleApplicationDecision(application, "accepted")}>接受</button><button className="ghost-outline" onClick={() => handleApplicationDecision(application, "rejected")}>拒绝</button></div>}{application.status === "accepted" && <div className="application-actions"><button className="primary-button small" onClick={() => openContactInfo(contactFromApplication(application))}>联系对方</button></div>}</article>)}</section>}
             </div>
           ) : (
             <div className="task-table applied-table">
               <div className="table-title"><h2>申请记录</h2><span>状态有变化时会收到提醒</span></div>
               {appliedTasks.map((application) => (
-                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {application.task.mode} · 申请于 {formatRelativeTime(application.createdAt)}</small></div><b>{application.task.reward}</b><button onClick={() => flash("申请详情页待上线")}>查看 →</button></div>
+                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {application.task.mode} · 申请于 {formatRelativeTime(application.createdAt)}</small></div><b>{application.task.reward}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openContactInfo(contactFromAppliedTask(application))}>联系对方</button>}<button onClick={() => flash("申请详情页待上线")}>查看</button></div></div>
               ))}
               {appliedTasks.length === 0 && <div className="empty-state"><span>⌕</span><h3>还没有申请记录</h3><p>申请任务后，会显示在这里。</p></div>}
             </div>
@@ -988,7 +1110,7 @@ export default function Home() {
         <section className="app-page profile-page">
           <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><button className="ghost-outline" onClick={signOut}>退出登录</button></div>
           <div className="profile-layout">
-            <aside className="profile-sidebar"><h3>个人简介</h3><p>这里会显示当前登录用户的个人资料。MVP 阶段先根据邮箱自动生成基础信息。</p><dl><div><dt>账号邮箱</dt><dd>{user?.email}</dd></div><div><dt>常用语言</dt><dd>中文 · English</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
+            <aside className="profile-sidebar"><h3>联系方式</h3><p>这些信息只会在双方匹配后用于联系，不会在公开任务列表展示。</p><form className="profile-contact-form" key={`${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>显示名称<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>专业<input name="major" defaultValue={profileContact.major} placeholder="例如：Data Science" /></label><label>联系邮箱<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>手机号<input name="phone" defaultValue={profileContact.phone} placeholder="可选" /></label><label>微信号<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder="可选" /></label><button className="primary-button small" type="submit">保存联系方式</button></form><dl><div><dt>账号邮箱</dt><dd>{user?.email}</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
             <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>发布任务</span></div><div><strong>{appliedTasks.length}</strong><span>申请任务</span></div><div><strong>0</strong><span>完成任务</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>待上线</span></div><div className="empty-state"><span>☆</span><h3>评价功能待上线</h3><p>完成任务后，这里会展示真实评价。</p></div></div></div>
           </div>
         </section>
@@ -999,6 +1121,7 @@ export default function Home() {
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
       {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={signInWithPassword}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>密码<input required name="password" minLength={6} placeholder="至少 6 位密码" type="password" /></label><button className="primary-button wide" type="submit">登录 / 注册</button></form><small>新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。</small></section></div>}
+      {contactInfo && <div className="modal-backdrop" onMouseDown={() => setContactInfo(null)}><section className="login-modal contact-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setContactInfo(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>联系 {contactInfo.name}</h2><p>UC Connect MVP 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。</p><div className="contact-list"><div><span>邮箱</span><strong>{contactInfo.email || "未填写"}</strong></div><div><span>手机号</span><strong>{contactInfo.phone || "未填写"}</strong></div><div><span>微信号</span><strong>{contactInfo.wechat || "未填写"}</strong></div></div><small>请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。</small></section></div>}
     </main>
   );
 }

@@ -5,6 +5,9 @@ create table if not exists public.profiles (
   display_name text not null,
   school text not null check (school in ('UCB', 'UCSD', 'UCLA')),
   major text,
+  contact_email text,
+  phone text,
+  wechat_id text,
   avatar_initials text not null default 'UC',
   bio text,
   verified_uc_email boolean not null default false,
@@ -66,6 +69,10 @@ create index if not exists tasks_school_category_idx on public.tasks(school, cat
 create index if not exists tasks_author_idx on public.tasks(author_id);
 create index if not exists applications_task_idx on public.applications(task_id);
 create index if not exists applications_applicant_idx on public.applications(applicant_id);
+
+alter table public.profiles add column if not exists contact_email text;
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists wechat_id text;
 
 grant usage on schema public to anon, authenticated;
 grant select on public.profiles to anon, authenticated;
