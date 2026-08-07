@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { supabase, TaskRow } from "@/lib/supabase";
+import { ApplicationRow, supabase, TaskRow } from "@/lib/supabase";
 
 type Task = {
   id: string;
@@ -130,6 +130,31 @@ const demoTasks: Task[] = [
 
 const categories = ["全部任务", "校园实拍", "新生落地", "经验咨询", "校园互助", "校园信息"];
 
+type PublishDraft = {
+  title?: string;
+  category?: string;
+  school?: Task["school"];
+  description?: string;
+  mode?: "线上" | "线下";
+  location?: string;
+  due_date?: string;
+  reward_type?: "paid" | "mutual_help";
+  reward_amount?: string;
+};
+
+type AppliedTask = {
+  id: string;
+  status: ApplicationRow["status"];
+  createdAt: string;
+  task: {
+    title: string;
+    school: Task["school"];
+    mode: string;
+    reward: string;
+    createdAt: string;
+  };
+};
+
 function formatReward(task: Pick<TaskRow, "reward_amount" | "reward_type">) {
   if (task.reward_type === "mutual_help") return "免费互助";
   return task.reward_amount === null ? "$0" : `$${Number(task.reward_amount).toFixed(0)}`;
@@ -147,6 +172,13 @@ function formatRelativeTime(value: string) {
 function formatDueDate(value: string | null) {
   if (!value) return "时间待定";
   return new Intl.DateTimeFormat("zh-CN", { month: "long", day: "numeric" }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatApplicationStatus(status: ApplicationRow["status"]) {
+  if (status === "pending") return "等待回复";
+  if (status === "accepted") return "已接受";
+  if (status === "rejected") return "未通过";
+  return "已撤回";
 }
 
 function mapTaskRow(row: TaskRow): Task {
@@ -170,6 +202,37 @@ function mapTaskRow(row: TaskRow): Task {
   };
 }
 
+function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
+  if (!row.tasks) return null;
+
+  return {
+    id: row.id,
+    status: row.status,
+    createdAt: row.created_at,
+    task: {
+      title: row.tasks.title,
+      school: row.tasks.school,
+      mode: row.tasks.mode,
+      reward: formatReward(row.tasks),
+      createdAt: row.tasks.created_at,
+    },
+  };
+}
+
+function readPublishDraft(): PublishDraft {
+  if (typeof window === "undefined") return {};
+
+  try {
+    return JSON.parse(window.localStorage.getItem("uc-connect-publish-draft") ?? "{}") as PublishDraft;
+  } catch {
+    return {};
+  }
+}
+
+function hasProhibitedContent(text: string) {
+  return /(代写|代考|替考|帮我写作业|写作业|代做|换汇|刷课|作弊)/i.test(text);
+}
+
 function getUserName(user: User | null) {
   if (!user?.email) return "未登录用户";
   return String(user.user_metadata?.display_name ?? user.email.split("@")[0]);
@@ -181,7 +244,11 @@ function getUserInitials(user: User | null) {
 }
 
 function getUserSchool(user: User | null) {
-  return String(user?.user_metadata?.school ?? "UC Student");
+  const email = user?.email ?? "";
+  if (email.endsWith("@ucsd.edu")) return "UCSD";
+  if (email.endsWith("@ucla.edu")) return "UCLA";
+  if (email.endsWith("@berkeley.edu")) return "UCB";
+  return "未设置学校";
 }
 
 export default function Home() {
@@ -200,6 +267,10 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [lastPublishedTask, setLastPublishedTask] = useState<Task | null>(null);
+  const [appliedTasks, setAppliedTasks] = useState<AppliedTask[]>([]);
+  const [publishDraft, setPublishDraft] = useState<PublishDraft>(() => readPublishDraft());
+  const [publishMode, setPublishMode] = useState<"线上" | "线下">(publishDraft.mode ?? "线下");
+  const [rewardType, setRewardType] = useState<"paid" | "mutual_help">(publishDraft.reward_type ?? "paid");
 
   useEffect(() => {
     if (!supabase) return;
@@ -214,6 +285,15 @@ export default function Home() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      loadApplications();
+      return;
+    }
+
+    setAppliedTasks([]);
+  }, [user]);
+
   const filtered = useMemo(() => tasks.filter((task) => {
     const schoolMatch = school === "全部 UC" || task.school === school;
     const categoryMatch = category === "全部任务" || task.category === category;
@@ -222,9 +302,21 @@ export default function Home() {
   }), [tasks, school, category, query]);
 
   const postedTasks = useMemo(() => {
-    if (!user) return tasks.slice(0, 3);
+    if (!user) return [];
     return tasks.filter((task) => task.authorId === user.id);
   }, [tasks, user]);
+
+  const featuredTasks = useMemo(() => tasks.slice(0, 3), [tasks]);
+
+  function requireAuth(action: () => void, message = "请先登录后继续") {
+    if (!user) {
+      flash(message);
+      setShowLogin(true);
+      return;
+    }
+
+    action();
+  }
 
   async function loadTasks() {
     if (!supabase) return;
@@ -243,6 +335,23 @@ export default function Home() {
     }
 
     setTasks(((data ?? []) as TaskRow[]).map(mapTaskRow));
+  }
+
+  async function loadApplications() {
+    if (!supabase || !user) return;
+
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, tasks(title, school, mode, reward_amount, reward_type, created_at)")
+      .eq("applicant_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      flash("读取申请记录失败");
+      return;
+    }
+
+    setAppliedTasks(((data ?? []) as ApplicationRow[]).map(mapApplicationRow).filter((item): item is AppliedTask => Boolean(item)));
   }
 
   function flash(message: string) {
@@ -291,6 +400,8 @@ export default function Home() {
     });
 
     if (!signInError) {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
       setShowLogin(false);
       flash("登录成功");
       return;
@@ -302,7 +413,7 @@ export default function Home() {
       options: {
         data: {
           display_name: email.split("@")[0],
-          school: "UCB",
+          school: "UC",
         },
       },
     });
@@ -322,6 +433,8 @@ export default function Home() {
       return;
     }
 
+    const { data } = await supabase.auth.getUser();
+    setUser(data.user);
     setShowLogin(false);
     flash("注册并登录成功");
   }
@@ -333,6 +446,15 @@ export default function Home() {
     if (!supabase || !user) {
       flash("请先登录后再发布需求");
       setShowLogin(true);
+      return;
+    }
+
+    const title = String(form.get("title") ?? "").trim();
+    const description = String(form.get("description") ?? "").trim();
+    const location = String(form.get("location") ?? "").trim();
+
+    if (hasProhibitedContent(`${title} ${description}`)) {
+      flash("该内容可能涉及平台禁止事项，请修改后再发布");
       return;
     }
 
@@ -353,14 +475,14 @@ export default function Home() {
     const rewardAmount = Number(form.get("reward_amount") || 0);
     const payload = {
       author_id: user.id,
-      title: String(form.get("title")),
-      description: String(form.get("description")),
+      title,
+      description,
       school: String(form.get("school")) as Task["school"],
       category: String(form.get("category")),
       mode: String(form.get("mode")) as "线上" | "线下",
       reward_type: rewardType,
       reward_amount: rewardType === "paid" ? rewardAmount : null,
-      location: String(form.get("location")),
+      location: location || "线上",
       due_date: String(form.get("due_date")) || null,
     };
 
@@ -376,10 +498,33 @@ export default function Home() {
     }
 
     const newTask = mapTaskRow(data as TaskRow);
+    window.localStorage.removeItem("uc-connect-publish-draft");
+    setPublishDraft({});
     setTasks((current) => [newTask, ...current]);
     setLastPublishedTask(newTask);
     setPublished(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function saveDraft(formElement: HTMLFormElement | null) {
+    if (!formElement) return;
+
+    const form = new FormData(formElement);
+    const draft: PublishDraft = {
+      title: String(form.get("title") ?? ""),
+      category: String(form.get("category") ?? ""),
+      school: String(form.get("school") ?? "UCB") as Task["school"],
+      description: String(form.get("description") ?? ""),
+      mode: String(form.get("mode") ?? "线下") as "线上" | "线下",
+      location: String(form.get("location") ?? ""),
+      due_date: String(form.get("due_date") ?? ""),
+      reward_type: String(form.get("reward_type") ?? "paid") as "paid" | "mutual_help",
+      reward_amount: String(form.get("reward_amount") ?? ""),
+    };
+
+    window.localStorage.setItem("uc-connect-publish-draft", JSON.stringify(draft));
+    setPublishDraft(draft);
+    flash("草稿已保存");
   }
 
   async function handleApply(event: FormEvent<HTMLFormElement>) {
@@ -415,6 +560,7 @@ export default function Home() {
     setTasks((current) => current.map((task) => (
       task.id === selectedTask.id ? { ...task, applicants: task.applicants + 1 } : task
     )));
+    loadApplications();
   }
 
   return (
@@ -427,12 +573,12 @@ export default function Home() {
           </button>
           <nav className="desktop-nav" aria-label="主导航">
             <button className={view === "home" ? "nav-active" : ""} onClick={() => navigate("home")}>发现任务</button>
-            <button className={view === "mine" ? "nav-active" : ""} onClick={() => navigate("mine")}>我的任务</button>
+            <button className={view === "mine" ? "nav-active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}>我的任务</button>
             <button onClick={() => flash("你暂时没有新消息")}>消息</button>
           </nav>
           <div className="header-actions">
             <button className="ghost-button" onClick={() => user ? flash(`已登录：${user.email}`) : setShowLogin(true)}>{user ? "已登录" : "登录"}</button>
-            <button className="primary-button small" onClick={() => navigate("publish")}>＋ 发布需求</button>
+            <button className="primary-button small" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>＋ 发布需求</button>
             <button className="profile-button" onClick={openProfile} aria-label="打开个人主页">{getUserInitials(user)}</button>
           </div>
         </div>
@@ -448,31 +594,23 @@ export default function Home() {
                 <p>连接 UC 校园里的同学，发布需求、分享经验、互相帮忙。简单一点，真诚一点。</p>
                 <div className="hero-actions">
                   <button className="primary-button" onClick={() => document.getElementById("task-list")?.scrollIntoView({ behavior: "smooth" })}>浏览附近任务 <span>→</span></button>
-                  <button className="text-button" onClick={() => navigate("publish")}>我有一个需求</button>
+                  <button className="text-button" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>我有一个需求</button>
                 </div>
                 <div className="trust-row">
                   <span className="avatar-stack"><i>MC</i><i>EL</i><i>SW</i></span>
-                  <span><strong>首批 200+ 位同学</strong><br />正在加入校园互助网络</span>
+                  <span><strong>MVP 测试版</strong><br />真实发布内容会同步到数据库</span>
                 </div>
               </div>
               <div className="hero-board" aria-label="热门任务预览">
-                <div className="board-top"><span>刚刚发布</span><span className="live-dot">实时更新</span></div>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[0] ?? demoTasks[0])}>
-                  <div className="task-icon blue">⌁</div>
-                  <div><span className="mini-label">UCB · 校园实拍</span><h3>帮忙实拍 Blackwell Hall</h3><p>12 分钟前 · 3 人申请</p></div>
-                  <strong>$25</strong>
-                </button>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[1] ?? demoTasks[1])}>
-                  <div className="task-icon teal">◎</div>
-                  <div><span className="mini-label">UCSD · 线上咨询</span><h3>Math-CS 转专业选课规划</h3><p>28 分钟前 · 5 人申请</p></div>
-                  <strong>$18</strong>
-                </button>
-                <button className="feature-task" onClick={() => setSelectedTask(tasks[2] ?? demoTasks[2])}>
-                  <div className="task-icon gold">✦</div>
-                  <div><span className="mini-label">UCLA · 新生落地</span><h3>一起熟悉 Westwood 周边</h3><p>1 小时前 · 2 人申请</p></div>
-                  <strong className="free">互助</strong>
-                </button>
-                <div className="board-footer"><span>安全发布 · 学校认证 · 双向评价</span><span>♡</span></div>
+                <div className="board-top"><span>最新任务</span><span className="live-dot">数据库同步</span></div>
+                {(featuredTasks.length ? featuredTasks : demoTasks.slice(0, 3)).map((task) => (
+                  <button className="feature-task" key={task.id} onClick={() => setSelectedTask(task)}>
+                    <div className={`task-icon ${task.tone}`}>{task.mode === "线上" ? "◎" : "⌁"}</div>
+                    <div><span className="mini-label">{task.school} · {task.category}</span><h3>{task.title}</h3><p>{task.time} · {task.applicants} 人申请</p></div>
+                    <strong className={task.reward.includes("互助") ? "free" : ""}>{task.reward}</strong>
+                  </button>
+                ))}
+                <div className="board-footer"><span>真实发布 · 学校认证 · 申请记录</span><span>♡</span></div>
               </div>
             </div>
           </section>
@@ -525,7 +663,7 @@ export default function Home() {
             <article className="detail-main">
               <div className="detail-meta"><span className={`school-badge ${selectedTask.school.toLowerCase()}`}>{selectedTask.school}</span><span>{selectedTask.category}</span><span>·</span><span>{selectedTask.time}</span></div>
               <h1>{selectedTask.title}</h1>
-              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ 已认证</b>}</strong><small>发布了 3 个任务 · 评分 4.9</small></span></div>
+              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ 已认证</b>}</strong><small>MVP 用户资料 · 评价功能待上线</small></span></div>
               <div className="detail-facts">
                 <div><span>地点</span><strong>{selectedTask.location}</strong></div>
                 <div><span>希望完成</span><strong>{selectedTask.due}</strong></div>
@@ -538,7 +676,7 @@ export default function Home() {
               <span>任务报酬</span><strong>{selectedTask.reward}</strong><small>平台 Demo 不处理真实付款</small>
               <hr />
               <div className="apply-stat"><span>已有申请</span><b>{selectedTask.applicants} 人</b></div>
-              {!showApply && !applied && <button className="primary-button wide" onClick={() => setShowApply(true)}>申请接取</button>}
+              {!showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>申请接取</button>}
               {showApply && !applied && <form onSubmit={handleApply} className="apply-form">
                 <label>申请说明<textarea required name="message" placeholder="介绍一下你为什么适合，以及可以完成的时间…" /></label>
                 <label>可完成时间<input required name="available_time" placeholder="例如：周三下午" /></label>
@@ -565,30 +703,30 @@ export default function Home() {
               <div className="form-section">
                 <span className="form-step">01</span><div><h2>基本信息</h2><p>先让大家一眼看懂你需要什么。</p></div>
                 <div className="form-fields full-row">
-                  <label className="field-wide">需求标题<input required name="title" placeholder="例如：帮忙实拍宿舍公共区域" /></label>
-                  <label>任务类别<select required name="category" defaultValue=""><option value="" disabled>请选择</option><option>校园实拍</option><option>新生落地</option><option>经验咨询</option><option>校园互助</option><option>校园信息</option></select></label>
-                  <label>所属学校<select required name="school" defaultValue="UCB"><option>UCB</option><option>UCSD</option><option>UCLA</option></select></label>
-                  <label className="field-wide">详细说明<textarea required name="description" placeholder="具体需要做什么？有没有特别需要注意的地方？" /></label>
+                  <label className="field-wide">需求标题<input required name="title" defaultValue={publishDraft.title ?? ""} placeholder="例如：帮忙实拍宿舍公共区域" /></label>
+                  <label>任务类别<select required name="category" defaultValue={publishDraft.category ?? ""}><option value="" disabled>请选择</option><option>校园实拍</option><option>新生落地</option><option>经验咨询</option><option>校园互助</option><option>校园信息</option></select></label>
+                  <label>所属学校<select required name="school" defaultValue={publishDraft.school ?? "UCB"}><option>UCB</option><option>UCSD</option><option>UCLA</option></select></label>
+                  <label className="field-wide">详细说明<textarea required name="description" defaultValue={publishDraft.description ?? ""} placeholder="具体需要做什么？有没有特别需要注意的地方？" /></label>
                 </div>
               </div>
               <div className="form-section">
                 <span className="form-step">02</span><div><h2>时间与地点</h2><p>告诉申请者在哪里、什么时候完成。</p></div>
                 <div className="form-fields full-row">
-                  <label>任务形式<select name="mode"><option>线下</option><option>线上</option></select></label>
+                  <label>任务形式<select name="mode" value={publishMode} onChange={(event) => setPublishMode(event.target.value as "线上" | "线下")}><option>线下</option><option>线上</option></select></label>
                   <label>任务范围<select><option>本校学生</option><option>所有 UC 学生</option></select></label>
-                  <label>地点<input required name="location" placeholder="例如：Blackwell Hall" /></label>
-                  <label>希望完成时间<input required name="due_date" type="date" defaultValue="2026-08-08" /></label>
+                  <label>{publishMode === "线上" ? "线上方式" : "地点"}<input required={publishMode === "线下"} name="location" defaultValue={publishDraft.location ?? ""} placeholder={publishMode === "线上" ? "例如：Zoom / 微信语音，可留空" : "例如：Blackwell Hall"} /></label>
+                  <label>希望完成时间<input required name="due_date" type="date" defaultValue={publishDraft.due_date ?? "2026-08-08"} /></label>
                 </div>
               </div>
               <div className="form-section">
-                <span className="form-step">03</span><div><h2>报酬说明</h2><p>Demo 只展示金额，不处理真实付款。</p></div>
+                <span className="form-step">03</span><div><h2>报酬说明</h2><p>MVP 暂不处理真实付款。</p></div>
                 <div className="form-fields full-row">
-                  <label>需求类型<select name="reward_type"><option value="paid">有偿任务</option><option value="mutual_help">免费互助</option></select></label>
-                  <label>报酬金额<div className="money-input"><span>$</span><input required name="reward_amount" type="number" min="0" placeholder="25" /></div></label>
+                  <label>需求类型<select name="reward_type" value={rewardType} onChange={(event) => setRewardType(event.target.value as "paid" | "mutual_help")}><option value="paid">有偿任务</option><option value="mutual_help">免费互助</option></select></label>
+                  <label>报酬金额<div className="money-input"><span>$</span><input disabled={rewardType === "mutual_help"} required={rewardType === "paid"} name="reward_amount" type="number" min="0" defaultValue={publishDraft.reward_amount ?? ""} placeholder={rewardType === "paid" ? "25" : "免费互助无需填写"} /></div></label>
                 </div>
               </div>
               <label className="agreement"><input required type="checkbox" /> 我确认该需求不涉及代写、代考、换汇、违法服务或其他平台禁止内容。</label>
-              <div className="form-actions"><button type="button" className="ghost-outline" onClick={() => navigate("home")}>保存草稿</button><button className="primary-button" type="submit">预览并发布 →</button></div>
+              <div className="form-actions"><button type="button" className="ghost-outline" onClick={(event) => saveDraft(event.currentTarget.form)}>保存草稿</button><button className="primary-button" type="submit">发布需求 →</button></div>
             </form>
           ) : (
             <div className="publish-success"><span>✓</span><h2>需求已发布</h2><p>你的任务现在会出现在对应校园的任务流中。</p><div className="preview-ticket"><span className={`school-badge ${(lastPublishedTask?.school ?? "UCB").toLowerCase()}`}>{lastPublishedTask?.school ?? "UCB"}</span><h3>{lastPublishedTask?.title ?? "新的校园需求"}</h3><small>刚刚 · 等待第一位申请者</small></div><button className="primary-button" onClick={() => navigate("mine")}>前往我的任务</button><button className="text-button" onClick={() => navigate("home")}>返回首页</button></div>
@@ -599,7 +737,7 @@ export default function Home() {
       {view === "mine" && (
         <section className="app-page mine-page">
           <div className="page-intro compact"><span className="section-kicker">MY TASKS</span><h1>我的任务</h1><p>在这里跟进你发布和申请的所有需求。</p></div>
-          <div className="mine-tabs"><button className={mineTab === "posted" ? "active" : ""} onClick={() => setMineTab("posted")}>我发布的 <b>{postedTasks.length}</b></button><button className={mineTab === "applied" ? "active" : ""} onClick={() => setMineTab("applied")}>我申请的 <b>2</b></button></div>
+          <div className="mine-tabs"><button className={mineTab === "posted" ? "active" : ""} onClick={() => setMineTab("posted")}>我发布的 <b>{postedTasks.length}</b></button><button className={mineTab === "applied" ? "active" : ""} onClick={() => setMineTab("applied")}>我申请的 <b>{appliedTasks.length}</b></button></div>
           {mineTab === "posted" ? (
             <div className="dashboard-layout">
               <div className="status-cards"><div><span>招募中</span><strong>{postedTasks.length}</strong><small>共 {postedTasks.reduce((sum, task) => sum + task.applicants, 0)} 份申请</small></div><div><span>进行中</span><strong>0</strong><small>等待双方完成</small></div><div><span>本月完成</span><strong>0</strong><small>MVP 数据开始记录</small></div></div>
@@ -614,8 +752,10 @@ export default function Home() {
           ) : (
             <div className="task-table applied-table">
               <div className="table-title"><h2>申请记录</h2><span>状态有变化时会收到提醒</span></div>
-              <div className="task-row"><span className="status progress">已接受</span><div><strong>借一个 TI-84 计算器参加周五考试</strong><small>UCB · 周五 10:00 前 · 发布者 Jason Y.</small></div><b>$10</b><button onClick={() => flash("联系方式将在双方确认后显示")}>查看 →</button></div>
-              <div className="task-row"><span className="status waiting">等待回复</span><div><strong>请分享一次 UCLA 校内研究申请经验</strong><small>UCLA · 线上 · 申请于 2 小时前</small></div><b>$20</b><button onClick={() => { navigate("home"); setSelectedTask(tasks[4] ?? demoTasks[4]); }}>查看 →</button></div>
+              {appliedTasks.map((application) => (
+                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {application.task.mode} · 申请于 {formatRelativeTime(application.createdAt)}</small></div><b>{application.task.reward}</b><button onClick={() => flash("申请详情页待上线")}>查看 →</button></div>
+              ))}
+              {appliedTasks.length === 0 && <div className="empty-state"><span>⌕</span><h3>还没有申请记录</h3><p>申请任务后，会显示在这里。</p></div>}
             </div>
           )}
         </section>
@@ -626,12 +766,12 @@ export default function Home() {
           <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><button className="ghost-outline" onClick={signOut}>退出登录</button></div>
           <div className="profile-layout">
             <aside className="profile-sidebar"><h3>个人简介</h3><p>这里会显示当前登录用户的个人资料。MVP 阶段先根据邮箱自动生成基础信息。</p><dl><div><dt>账号邮箱</dt><dd>{user?.email}</dd></div><div><dt>常用语言</dt><dd>中文 · English</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
-            <div className="profile-content"><div className="profile-stats"><div><strong>7</strong><span>完成任务</span></div><div><strong>4.9</strong><span>平均评分</span></div><div><strong>100%</strong><span>完成率</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>共 5 条</span></div><article><div><i>MC</i><span><strong>Mia Chen</strong><small>校园信息 · 7 月 28 日</small></span><b>★★★★★</b></div><p>回复很快，讲得也很清楚，还补充了很多我没想到的细节。</p></article><article><div><i>KH</i><span><strong>Kevin H.</strong><small>新生落地 · 7 月 16 日</small></span><b>★★★★★</b></div><p>非常靠谱，时间也安排得很准。谢谢！</p></article></div></div>
+            <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>发布任务</span></div><div><strong>{appliedTasks.length}</strong><span>申请任务</span></div><div><strong>0</strong><span>完成任务</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>待上线</span></div><div className="empty-state"><span>☆</span><h3>评价功能待上线</h3><p>完成任务后，这里会展示真实评价。</p></div></div></div>
           </div>
         </section>
       )}
 
-      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => user ? navigate("mine") : setShowLogin(true)}><span>▤</span>任务</button><button className="mobile-add" onClick={() => navigate("publish")}>＋</button><button onClick={() => flash("你暂时没有新消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>我的</button></nav>
+      <nav className="mobile-nav" aria-label="移动端导航"><button className={view === "home" ? "active" : ""} onClick={() => navigate("home")}><span>⌕</span>发现</button><button className={view === "mine" ? "active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}><span>▤</span>任务</button><button className="mobile-add" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>＋</button><button onClick={() => flash("你暂时没有新消息")}><span>◇</span>消息</button><button className={view === "profile" ? "active" : ""} onClick={openProfile}><span>○</span>我的</button></nav>
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>连接每一个 UC 校园，让需求找到回应。</p><span>Demo v0.1 · 2026</span></div></footer>
       {notice && <div className="toast">{notice}</div>}
