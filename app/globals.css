@@ -6,6 +6,7 @@ html { scroll-behavior:smooth; }
 body { margin:0; background:#fbfcfd; color:var(--ink); font-family:"PingFang SC", "Microsoft YaHei", "Segoe UI", Arial, sans-serif; }
 button,input,textarea { font:inherit; }
 button { color:inherit; }
+button, .task-card h3, .feature-task h3, .row-actions button, .primary-button, .ghost-outline, .text-button { overflow-wrap:anywhere; }
 .site-header { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.94); backdrop-filter:blur(16px); border-bottom:1px solid rgba(216,224,234,.8); }
 .header-inner { max-width:1180px; height:72px; margin:auto; padding:0 24px; display:flex; align-items:center; justify-content:space-between; gap:32px; }
 .brand { display:flex; align-items:center; gap:10px; border:0; background:none; padding:0; font-weight:750; font-size:20px; color:var(--navy); cursor:pointer; letter-spacing:-.4px; }
@@ -15,10 +16,11 @@ button { color:inherit; }
 .desktop-nav { display:flex; align-items:center; gap:28px; margin-right:auto; margin-left:34px; }
 .desktop-nav button { border:0; background:none; padding:26px 0 22px; color:#637083; font-size:14px; cursor:pointer; border-bottom:3px solid transparent; }
 .desktop-nav .nav-active { color:var(--blue); font-weight:700; border-color:var(--gold); }
-.header-actions { display:flex; align-items:center; gap:10px; }
+.header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+.lang-toggle { border:1px solid #d4dce5;background:white;color:#4f6075;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:750;cursor:pointer;white-space:nowrap; }
 .profile-button { width:36px;height:36px;border-radius:50%;border:0;background:#e6edf6;color:var(--blue);font-size:11px;font-weight:800;cursor:pointer; }
 .ghost-button,.text-button { border:0; background:none; cursor:pointer; font-weight:650; color:var(--blue); padding:10px 14px; }
-.primary-button { border:0; background:var(--blue); color:white; min-height:48px; padding:0 22px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px rgba(18,62,117,.18); transition:.2s ease; }
+.primary-button { border:0; background:var(--blue); color:white; min-height:48px; padding:0 22px; border-radius:12px; font-weight:700; cursor:pointer; box-shadow:0 8px 18px rgba(18,62,117,.18); transition:.2s ease; display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.25; }
 .primary-button:hover { background:var(--blue-2); transform:translateY(-1px); box-shadow:0 11px 22px rgba(18,62,117,.23); }
 .primary-button.small { min-height:40px; border-radius:9px; font-size:14px; padding:0 17px; }
 .primary-button.wide,.text-button.wide { width:100%; }
