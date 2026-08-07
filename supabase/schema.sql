@@ -126,6 +126,31 @@ create trigger applications_refresh_task_count
 after insert or update or delete on public.applications
 for each row execute function public.refresh_task_applications_count();
 
+create or replace function public.prevent_self_application()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.tasks
+    where tasks.id = new.task_id
+    and tasks.author_id = new.applicant_id
+  ) then
+    raise exception 'Task authors cannot apply to their own tasks';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists applications_prevent_self_application on public.applications;
+create trigger applications_prevent_self_application
+before insert or update of applicant_id, task_id on public.applications
+for each row execute function public.prevent_self_application();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql

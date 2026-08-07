@@ -154,6 +154,7 @@ type AppliedTask = {
   status: ApplicationRow["status"];
   createdAt: string;
   task: {
+    authorId: string;
     title: string;
     school: Task["school"];
     mode: string;
@@ -242,6 +243,7 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
     createdAt: row.created_at,
     task: {
       title: row.tasks.title,
+      authorId: row.tasks.author_id,
       school: row.tasks.school,
       mode: row.tasks.mode,
       reward: formatReward(row.tasks),
@@ -398,6 +400,7 @@ export default function Home() {
       status: formatApplicationStatus(application.status),
     })),
   ].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()), [receivedApplications, appliedTasks]);
+  const isOwnSelectedTask = Boolean(user && selectedTask?.authorId === user.id);
 
   function requireAuth(action: () => void, message = "请先登录后继续") {
     if (!user) {
@@ -438,7 +441,7 @@ export default function Home() {
 
     const { data, error } = await supabase
       .from("applications")
-      .select("*, tasks(id, title, school, mode, reward_amount, reward_type, status, created_at)")
+      .select("*, tasks(id, author_id, title, school, mode, reward_amount, reward_type, status, created_at)")
       .eq("applicant_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -447,7 +450,10 @@ export default function Home() {
       return;
     }
 
-    setAppliedTasks(((data ?? []) as ApplicationRow[]).map(mapApplicationRow).filter((item): item is AppliedTask => Boolean(item)));
+    setAppliedTasks(((data ?? []) as ApplicationRow[])
+      .filter((row) => row.tasks?.author_id !== user.id)
+      .map(mapApplicationRow)
+      .filter((item): item is AppliedTask => Boolean(item)));
   }
 
   async function loadReceivedApplications() {
@@ -876,8 +882,10 @@ export default function Home() {
               <span>任务报酬</span><strong>{selectedTask.reward}</strong><small>平台 Demo 不处理真实付款</small>
               <hr />
               <div className="apply-stat"><span>已有申请</span><b>{selectedTask.applicants} 人</b></div>
-              {!showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>申请接取</button>}
-              {showApply && !applied && <form onSubmit={handleApply} className="apply-form">
+              {isOwnSelectedTask && <button className="primary-button wide" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>管理任务</button>}
+              {isOwnSelectedTask && selectedTask.applicants > 0 && <button className="ghost-outline wide-action" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>查看申请（{selectedTask.applicants}）</button>}
+              {!isOwnSelectedTask && !showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>申请接取</button>}
+              {!isOwnSelectedTask && showApply && !applied && <form onSubmit={handleApply} className="apply-form">
                 <label>申请说明<textarea required name="message" placeholder="介绍一下你为什么适合，以及可以完成的时间…" /></label>
                 <label>可完成时间<input required name="available_time" placeholder="例如：周三下午" /></label>
                 <button className="primary-button wide" type="submit">提交申请</button>
