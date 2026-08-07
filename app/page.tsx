@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { ApplicationRow, supabase, TaskRow } from "@/lib/supabase";
+import { ApplicationRow, ReviewRow, supabase, TaskRow } from "@/lib/supabase";
 
 type Task = {
   id: string;
@@ -153,8 +153,10 @@ type AppliedTask = {
   id: string;
   status: ApplicationRow["status"];
   createdAt: string;
+  taskId: string;
   task: {
     authorId: string;
+    status: TaskRow["status"];
     title: string;
     school: Task["school"];
     mode: string;
@@ -174,6 +176,7 @@ type ReceivedApplication = {
   taskId: string;
   taskTitle: string;
   taskStatus: TaskRow["status"];
+  applicantId: string;
   applicantName: string;
   applicantAvatar: string;
   applicantSchool: string;
@@ -202,6 +205,15 @@ type ProfileContact = {
   phone: string;
   wechat_id: string;
 };
+
+type ReviewSummary = {
+  average: number;
+  count: number;
+};
+
+function renderStars(rating: number) {
+  return "★★★★★".slice(0, rating) + "☆☆☆☆☆".slice(0, 5 - rating);
+}
 
 function formatReward(task: Pick<TaskRow, "reward_amount" | "reward_type">) {
   if (task.reward_type === "mutual_help") return "免费互助";
@@ -265,9 +277,11 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
     id: row.id,
     status: row.status,
     createdAt: row.created_at,
+    taskId: row.task_id,
     task: {
       title: row.tasks.title,
       authorId: row.tasks.author_id,
+      status: row.tasks.status,
       school: row.tasks.school,
       mode: row.tasks.mode,
       reward: formatReward(row.tasks),
@@ -291,6 +305,7 @@ function mapReceivedApplicationRow(row: ApplicationRow): ReceivedApplication | n
     taskId: row.task_id,
     taskTitle: task.title,
     taskStatus: task.status,
+    applicantId: row.applicant_id,
     applicantName: row.profiles?.display_name ?? "UC Student",
     applicantAvatar: row.profiles?.avatar_initials ?? "UC",
     applicantSchool: row.profiles?.school ?? "UC",
@@ -361,6 +376,10 @@ export default function Home() {
   const [profileContact, setProfileContact] = useState<ProfileContact>({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({ average: 0, count: 0 });
+  const [myReviews, setMyReviews] = useState<ReviewRow[]>([]);
+  const [reviewTarget, setReviewTarget] = useState<{ taskId: string; revieweeId: string; name: string } | null>(null);
+  const [selectedRating, setSelectedRating] = useState(5);
   const [messageReadAt, setMessageReadAt] = useState(() => (
     typeof window === "undefined" ? 0 : Number(window.localStorage.getItem("uc-connect-message-read-at") ?? 0)
   ));
@@ -386,11 +405,14 @@ export default function Home() {
       loadProfile();
       loadApplications();
       loadReceivedApplications();
+      loadReviews();
       return;
     }
 
     setAppliedTasks([]);
     setReceivedApplications([]);
+    setMyReviews([]);
+    setReviewSummary({ average: 0, count: 0 });
     setProfileContact({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   }, [user]);
 
@@ -520,6 +542,28 @@ export default function Home() {
       phone: data.phone ?? "",
       wechat_id: data.wechat_id ?? "",
     });
+  }
+
+  async function loadReviews() {
+    if (!supabase || !user) return;
+
+    const [{ data: received, error: receivedError }, { data: mine, error: mineError }] = await Promise.all([
+      supabase.from("reviews").select("*").eq("reviewee_id", user.id),
+      supabase.from("reviews").select("*").eq("reviewer_id", user.id),
+    ]);
+
+    if (receivedError || mineError) {
+      flash("读取评价失败");
+      return;
+    }
+
+    const receivedReviews = (received ?? []) as ReviewRow[];
+    const total = receivedReviews.reduce((sum, review) => sum + review.rating, 0);
+    setReviewSummary({
+      average: receivedReviews.length ? total / receivedReviews.length : 0,
+      count: receivedReviews.length,
+    });
+    setMyReviews((mine ?? []) as ReviewRow[]);
   }
 
   async function loadReceivedApplications() {
@@ -798,6 +842,7 @@ export default function Home() {
     if (user) {
       await loadApplications();
       await loadReceivedApplications();
+      await loadReviews();
     }
   }
 
@@ -891,6 +936,41 @@ export default function Home() {
 
   function contactFromAppliedTask(application: AppliedTask): ContactInfo {
     return application.author;
+  }
+
+  function hasReviewed(taskId: string, revieweeId: string) {
+    return myReviews.some((review) => review.task_id === taskId && review.reviewee_id === revieweeId);
+  }
+
+  function openReviewTarget(target: { taskId: string; revieweeId: string; name: string }) {
+    if (hasReviewed(target.taskId, target.revieweeId)) {
+      flash("你已经评价过对方");
+      return;
+    }
+
+    setSelectedRating(5);
+    setReviewTarget(target);
+  }
+
+  async function submitRating() {
+    if (!supabase || !user || !reviewTarget) return;
+
+    const { error } = await supabase.from("reviews").insert({
+      task_id: reviewTarget.taskId,
+      reviewer_id: user.id,
+      reviewee_id: reviewTarget.revieweeId,
+      rating: selectedRating,
+      comment: null,
+    });
+
+    if (error) {
+      flash(error.code === "23505" ? "你已经评价过对方" : error.message);
+      return;
+    }
+
+    setReviewTarget(null);
+    await loadReviews();
+    flash("评价已提交");
   }
 
   return (
@@ -988,7 +1068,7 @@ export default function Home() {
             <article className="detail-main">
               <div className="detail-meta"><span className={`school-badge ${selectedTask.school.toLowerCase()}`}>{selectedTask.school}</span><span>{selectedTask.category}</span><span>·</span><span>{selectedTask.time}</span></div>
               <h1>{selectedTask.title}</h1>
-              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ 已认证</b>}</strong><small>MVP 用户资料 · 评价功能待上线</small></span></div>
+              <div className="detail-author"><i>{selectedTask.avatar}</i><span><strong>{selectedTask.author} {selectedTask.verified && <b>✓ 已认证</b>}</strong><small>完成任务后可互相评分</small></span></div>
               <div className="detail-facts">
                 <div><span>地点</span><strong>{selectedTask.location}</strong></div>
                 <div><span>希望完成</span><strong>{selectedTask.due}</strong></div>
@@ -1071,7 +1151,7 @@ export default function Home() {
               <div className="task-table">
                 <div className="table-title"><h2>最近发布</h2><button onClick={() => navigate("publish")}>＋ 新需求</button></div>
                 {visiblePostedTasks.map((task) => (
-                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{formatTaskStatus(task.status)}</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看详情</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>查看申请（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>编辑</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>关闭招募</button>}{task.status === "in_progress" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openContactInfo(contactFromApplication(accepted)) : flash("还没有已接受的申请人"); }}>联系对方</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>确认完成</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>查看记录</button>}{task.status === "completed" && <button onClick={() => flash("评价功能待上线")}>评价对方</button>}</div></div>
+                  <div className="task-row manage-row" key={task.id}><span className={`status ${task.status === "open" ? "open" : task.status === "completed" ? "progress" : "waiting"}`}>{formatTaskStatus(task.status)}</span><div><strong>{task.title}</strong><small>{task.school} · {task.category} · {task.applicants} 份申请</small></div><b>{task.reward}</b><div className="row-actions"><button onClick={() => { navigate("home"); setSelectedTask(task); }}>查看详情</button>{task.applicants > 0 && <button className="action-strong" onClick={() => setManagedTaskId(managedTaskId === task.id ? null : task.id)}>查看申请（{task.applicants}）</button>}{task.status === "open" && <button onClick={() => flash("编辑功能待上线")}>编辑</button>}{task.status === "open" && <button onClick={() => updateTaskStatus(task, "cancelled")}>关闭招募</button>}{task.status === "in_progress" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openContactInfo(contactFromApplication(accepted)) : flash("还没有已接受的申请人"); }}>联系对方</button>}{task.status === "in_progress" && <button onClick={() => updateTaskStatus(task, "completed")}>确认完成</button>}{task.status === "cancelled" && <button onClick={() => flash("已关闭的任务不能继续操作")}>查看记录</button>}{task.status === "completed" && <button onClick={() => { const accepted = acceptedApplicationByTaskId.get(task.id); accepted ? openReviewTarget({ taskId: task.id, revieweeId: accepted.applicantId, name: accepted.applicantName }) : flash("还没有已接受的申请人"); }}>{acceptedApplicationByTaskId.get(task.id) && hasReviewed(task.id, acceptedApplicationByTaskId.get(task.id)!.applicantId) ? "已评价" : "评价对方"}</button>}</div></div>
                 ))}
                 {visiblePostedTasks.length === 0 && <div className="empty-state"><span>＋</span><h3>没有对应状态的任务</h3><p>发布或切换状态筛选后，会显示在这里。</p></div>}
               </div>
@@ -1081,7 +1161,7 @@ export default function Home() {
             <div className="task-table applied-table">
               <div className="table-title"><h2>申请记录</h2><span>状态有变化时会收到提醒</span></div>
               {appliedTasks.map((application) => (
-                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {application.task.mode} · 申请于 {formatRelativeTime(application.createdAt)}</small></div><b>{application.task.reward}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openContactInfo(contactFromAppliedTask(application))}>联系对方</button>}<button onClick={() => flash("申请详情页待上线")}>查看</button></div></div>
+                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{formatApplicationStatus(application.status)}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {application.task.mode} · 申请于 {formatRelativeTime(application.createdAt)}</small></div><b>{application.task.reward}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openContactInfo(contactFromAppliedTask(application))}>联系对方</button>}{application.status === "accepted" && application.task.status === "completed" && <button onClick={() => openReviewTarget({ taskId: application.taskId, revieweeId: application.task.authorId, name: application.author.name })}>{hasReviewed(application.taskId, application.task.authorId) ? "已评价" : "评价发布者"}</button>}<button onClick={() => flash("申请详情页待上线")}>查看</button></div></div>
               ))}
               {appliedTasks.length === 0 && <div className="empty-state"><span>⌕</span><h3>还没有申请记录</h3><p>申请任务后，会显示在这里。</p></div>}
             </div>
@@ -1108,7 +1188,7 @@ export default function Home() {
           <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ 已登录</span><h1>{profileContact.display_name || getUserName(user)}</h1><p>{getUserSchool(user)} · {user?.email}</p></div><div className="profile-hero-actions"><button className="ghost-outline" onClick={() => setShowEditProfile(true)}>编辑资料</button><button className="ghost-outline" onClick={signOut}>退出登录</button></div></div>
           <div className="profile-layout">
             <aside className="profile-sidebar"><h3>资料摘要</h3><p>联系方式只会在双方匹配后展示给对方，不会出现在公开任务列表。</p><dl><div><dt>显示名称</dt><dd>{profileContact.display_name || getUserName(user)}</dd></div><div><dt>专业</dt><dd>{profileContact.major || "未填写"}</dd></div><div><dt>联系邮箱</dt><dd>{profileContact.contact_email || user?.email || "未填写"}</dd></div><div><dt>手机号</dt><dd>{profileContact.phone || "未填写"}</dd></div><div><dt>微信号</dt><dd>{profileContact.wechat_id || "未填写"}</dd></div><div><dt>所在校区</dt><dd>{getUserSchool(user)}</dd></div></dl></aside>
-            <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>发布任务</span></div><div><strong>{appliedTasks.length}</strong><span>申请任务</span></div><div><strong>0</strong><span>完成任务</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>待上线</span></div><div className="empty-state"><span>☆</span><h3>评价功能待上线</h3><p>完成任务后，这里会展示真实评价。</p></div></div></div>
+            <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>发布任务</span></div><div><strong>{appliedTasks.length}</strong><span>申请任务</span></div><div><strong>{completedPostedCount}</strong><span>完成任务</span></div></div><div className="reviews"><div className="table-title"><h2>收到的评价</h2><span>{reviewSummary.count > 0 ? `${reviewSummary.count} 条评分` : "暂无评分"}</span></div>{reviewSummary.count > 0 ? <div className="rating-summary"><strong>{reviewSummary.average.toFixed(1)}</strong><span>{renderStars(Math.round(reviewSummary.average))}</span><small>基于 {reviewSummary.count} 条任务评分</small></div> : <div className="empty-state"><span>☆</span><h3>还没有评分</h3><p>完成任务后，对方给你的星级会显示在这里。</p></div>}</div></div>
           </div>
         </section>
       )}
@@ -1120,6 +1200,7 @@ export default function Home() {
       {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>欢迎来到 UC Connect</h2><p>登录后即可发布需求、提交申请和管理任务。</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; 使用 Google 登录</button><div className="or"><span />或<span /></div><form onSubmit={signInWithPassword}><label>邮箱地址<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>密码<input required name="password" minLength={6} placeholder="至少 6 位密码" type="password" /></label><button className="primary-button wide" type="submit">登录 / 注册</button></form><small>新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。</small></section></div>}
       {showEditProfile && <div className="modal-backdrop" onMouseDown={() => setShowEditProfile(false)}><section className="login-modal edit-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowEditProfile(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>编辑资料</h2><p>这些联系方式只会在双方匹配后展示给对方。</p><form className="profile-contact-form" key={`edit-${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>显示名称<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>专业<input name="major" defaultValue={profileContact.major} placeholder="例如：Data Science" /></label><label>联系邮箱<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>手机号<input name="phone" defaultValue={profileContact.phone} placeholder="可选" /></label><label>微信号<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder="可选" /></label><button className="primary-button wide" type="submit">保存资料</button></form><small>建议至少填写邮箱或微信，方便任务匹配后联系。</small></section></div>}
       {contactInfo && <div className="modal-backdrop" onMouseDown={() => setContactInfo(null)}><section className="login-modal contact-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setContactInfo(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>联系 {contactInfo.name}</h2><p>UC Connect MVP 暂不提供站内实时聊天，请通过对方公开给匹配对象的联系方式沟通。</p><div className="contact-list"><div><span>邮箱</span><strong>{contactInfo.email || "未填写"}</strong></div><div><span>手机号</span><strong>{contactInfo.phone || "未填写"}</strong></div><div><span>微信号</span><strong>{contactInfo.wechat || "未填写"}</strong></div></div><small>请勿提前转账或分享敏感个人信息。建议先确认任务范围和交付方式。</small></section></div>}
+      {reviewTarget && <div className="modal-backdrop" onMouseDown={() => setReviewTarget(null)}><section className="login-modal rating-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setReviewTarget(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>评价 {reviewTarget.name}</h2><p>这次先只打星，不写评论。</p><div className="star-picker" role="radiogroup" aria-label="评分">{[1, 2, 3, 4, 5].map((value) => <button key={value} type="button" className={value <= selectedRating ? "active" : ""} onClick={() => setSelectedRating(value)} aria-label={`${value} 星`}>★</button>)}</div><button className="primary-button wide" onClick={submitRating}>提交 {selectedRating} 星评价</button></section></div>}
     </main>
   );
 }

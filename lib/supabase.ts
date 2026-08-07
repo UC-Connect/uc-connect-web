@@ -50,6 +50,16 @@ export type ApplicationRow = {
   profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major" | "contact_email" | "phone" | "wechat_id"> | null;
 };
 
+export type ReviewRow = {
+  id: string;
+  task_id: string;
+  reviewer_id: string;
+  reviewee_id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

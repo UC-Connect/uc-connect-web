@@ -158,6 +158,54 @@ create trigger applications_prevent_self_application
 before insert or update of applicant_id, task_id on public.applications
 for each row execute function public.prevent_self_application();
 
+create or replace function public.validate_review_participants()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  task_author uuid;
+  accepted_applicant uuid;
+begin
+  select tasks.author_id
+  into task_author
+  from public.tasks
+  where tasks.id = new.task_id
+  and tasks.status = 'completed';
+
+  if task_author is null then
+    raise exception 'Reviews can only be created for completed tasks';
+  end if;
+
+  select applications.applicant_id
+  into accepted_applicant
+  from public.applications
+  where applications.task_id = new.task_id
+  and applications.status = 'accepted'
+  limit 1;
+
+  if accepted_applicant is null then
+    raise exception 'Reviews require an accepted application';
+  end if;
+
+  if not (
+    (new.reviewer_id = task_author and new.reviewee_id = accepted_applicant)
+    or
+    (new.reviewer_id = accepted_applicant and new.reviewee_id = task_author)
+  ) then
+    raise exception 'Reviewer and reviewee must be matched task participants';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reviews_validate_participants on public.reviews;
+create trigger reviews_validate_participants
+before insert or update of task_id, reviewer_id, reviewee_id on public.reviews
+for each row execute function public.validate_review_participants();
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
