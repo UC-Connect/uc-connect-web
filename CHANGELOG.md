@@ -4,6 +4,20 @@ All notable updates to UC Connect are recorded here.
 
 UC Connect 的重要更新都会记录在这里。
 
+## v0.2.1 - 2026-08-08
+
+### Added / 新增
+- Added profile completeness reminders when contact info is missing.
+  新增资料完整度提醒，在用户未填写联系方式时提示完善资料。
+- Added independent task detail URLs at `/tasks/[id]`.
+  新增独立任务详情链接 `/tasks/[id]`。
+- Added a task progress timeline on the task detail page.
+  在任务详情页新增任务进度时间线。
+
+### Changed / 调整
+- Kept legacy `?task=` links compatible while moving new task links to `/tasks/[id]`.
+  在新链接改为 `/tasks/[id]` 的同时，继续兼容旧的 `?task=` 链接。
+
 ## v0.2.0 - 2026-08-08
 
 ### Added / 新增
