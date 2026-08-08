@@ -18,6 +18,12 @@ UC Connect 的重要更新都会记录在这里。
 - Kept legacy `?task=` links compatible while moving new task links to `/tasks/[id]`.
   在新链接改为 `/tasks/[id]` 的同时，继续兼容旧的 `?task=` 链接。
 
+### Fixed / 修复
+- Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
+  优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
+- Separated login and sign-up paths and fixed invalid profile school metadata during registration.
+  拆分登录和注册路径，并修复注册时写入非法学校字段导致资料创建失败的问题。
+
 ## v0.2.0 - 2026-08-08
 
 ### Added / 新增

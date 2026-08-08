@@ -564,8 +564,15 @@ set search_path = public
 as $$
 declare
   email_domain text;
+  profile_school text;
 begin
   email_domain := split_part(new.email, '@', 2);
+  profile_school := case
+    when new.raw_user_meta_data->>'school' in ('UCB', 'UCSD', 'UCLA') then new.raw_user_meta_data->>'school'
+    when email_domain = 'ucsd.edu' then 'UCSD'
+    when email_domain = 'ucla.edu' then 'UCLA'
+    else 'UCB'
+  end;
 
   insert into public.profiles (
     id,
@@ -578,7 +585,7 @@ begin
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1), 'UC Student'),
-    coalesce(new.raw_user_meta_data->>'school', 'UCB'),
+    profile_school,
     new.raw_user_meta_data->>'major',
     upper(left(coalesce(new.raw_user_meta_data->>'display_name', new.email, 'UC'), 2)),
     email_domain in (

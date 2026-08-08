@@ -367,6 +367,12 @@ const textMap: Record<string, string> = {
   "密码": "Password",
   "至少 6 位密码": "At least 6 characters",
   "登录 / 注册": "Log In / Sign Up",
+  "登录账号": "Log In",
+  "注册账号": "Sign Up",
+  "没有账号？去注册": "No account? Sign up",
+  "已有账号？去登录": "Already have an account? Log in",
+  "账号不存在或密码不正确，请检查后重试。": "Account not found or password is incorrect. Please check and try again.",
+  "账号已创建并登录成功": "Account created and logged in",
   "新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。": "New emails create an account automatically. School emails get UC verification.",
   "这些联系方式只会在双方匹配后展示给对方。": "This contact info is shown only after a match.",
   "例如：Data Science": "Example: Data Science",
@@ -399,6 +405,8 @@ const textMap: Record<string, string> = {
   "请先配置 Supabase 环境变量": "Please configure Supabase environment variables first",
   "登录成功": "Logged in",
   "账号已创建，请再点一次登录": "Account created. Please click log in again.",
+  "账号已存在，请检查密码是否正确，或换一个邮箱注册。": "This account already exists. Please check the password or use another email to sign up.",
+  "账号已创建，请检查邮箱验证后再登录。": "Account created. Please verify your email before logging in.",
   "注册并登录成功": "Registered and logged in",
   "该内容可能涉及平台禁止事项，请修改后再发布": "This content may violate platform rules. Please edit before posting.",
   "草稿已保存": "Draft saved",
@@ -717,6 +725,12 @@ function getUserSchool(user: User | null) {
   return "未设置学校";
 }
 
+function inferSchoolFromEmail(email: string): "UCB" | "UCSD" | "UCLA" {
+  if (email.endsWith("@ucsd.edu")) return "UCSD";
+  if (email.endsWith("@ucla.edu")) return "UCLA";
+  return "UCB";
+}
+
 export default function Home() {
   const [view, setView] = useState<"home" | "publish" | "mine" | "profile" | "messages">("home");
   const [school, setSchool] = useState("全部 UC");
@@ -728,6 +742,7 @@ export default function Home() {
   const [applied, setApplied] = useState(false);
   const [notice, setNotice] = useState("");
   const [showLogin, setShowLogin] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [published, setPublished] = useState(false);
   const [mineTab, setMineTab] = useState<"posted" | "applied">("posted");
   const [user, setUser] = useState<User | null>(null);
@@ -1215,12 +1230,17 @@ export default function Home() {
       return;
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (authMode === "login") {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (!signInError) {
+      if (signInError) {
+        flash("账号不存在或密码不正确，请检查后重试。");
+        return;
+      }
+
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
       setShowLogin(false);
@@ -1228,19 +1248,37 @@ export default function Home() {
       return;
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           display_name: email.split("@")[0],
-          school: "UC",
+          school: inferSchoolFromEmail(email),
         },
       },
     });
 
     if (signUpError) {
+      const normalizedMessage = signUpError.message.toLowerCase();
+      if (normalizedMessage.includes("already") || normalizedMessage.includes("registered") || normalizedMessage.includes("exist")) {
+        flash("账号已存在，请检查密码是否正确，或换一个邮箱注册。");
+        return;
+      }
+
       flash(signUpError.message);
+      return;
+    }
+
+    if (signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+      flash("账号已存在，请检查密码是否正确，或换一个邮箱注册。");
+      return;
+    }
+
+    if (signUpData.session) {
+      setUser(signUpData.user);
+      setShowLogin(false);
+      flash("账号已创建并登录成功");
       return;
     }
 
@@ -1250,7 +1288,7 @@ export default function Home() {
     });
 
     if (retryError) {
-      flash("账号已创建，请再点一次登录");
+      flash(retryError.message.toLowerCase().includes("confirm") ? "账号已创建，请检查邮箱验证后再登录。" : "账号已创建，请再点一次登录");
       return;
     }
 
@@ -1943,7 +1981,7 @@ export default function Home() {
 
       <footer><div className="footer-inner"><span className="brand footer-brand"><span className="brand-mark"><i /><i /><i /></span><span>UC Connect</span></span><p>{t("连接每一个 UC 校园，让需求找到回应。")}</p><span>UC Connect · 2026</span></div></footer>
       {notice && <div className="toast">{tv(notice)}</div>}
-      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("欢迎来到 UC Connect")}</h2><p>{t("登录后即可发布需求、提交申请和管理任务。")}</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; {t("使用 Google 登录")}</button><div className="or"><span />{t("或")}<span /></div><form onSubmit={signInWithPassword}><label>{t("邮箱地址")}<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>{t("密码")}<input required name="password" minLength={6} placeholder={t("至少 6 位密码")} type="password" /></label><button className="primary-button wide" type="submit">{t("登录 / 注册")}</button></form><small>{t("新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。")}</small></section></div>}
+      {showLogin && <div className="modal-backdrop" onMouseDown={() => setShowLogin(false)}><section className="login-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowLogin(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("欢迎来到 UC Connect")}</h2><p>{t("登录后即可发布需求、提交申请和管理任务。")}</p><button className="sso-button" onClick={() => flash("Google 登录可以下一步接入")}>G&nbsp;&nbsp; {t("使用 Google 登录")}</button><div className="or"><span />{t("或")}<span /></div><div className="auth-tabs"><button className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>{t("登录账号")}</button><button className={authMode === "signup" ? "active" : ""} onClick={() => setAuthMode("signup")}>{t("注册账号")}</button></div><form onSubmit={signInWithPassword}><label>{t("邮箱地址")}<input required name="email" placeholder="name@berkeley.edu" type="email" /></label><label>{t("密码")}<input required name="password" minLength={6} placeholder={t("至少 6 位密码")} type="password" /></label><button className="primary-button wide" type="submit">{authMode === "login" ? t("登录账号") : t("注册账号")}</button></form><button className="auth-switch" onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}>{authMode === "login" ? t("没有账号？去注册") : t("已有账号？去登录")}</button><small>{t("新邮箱会自动创建账号。使用学校邮箱可获得 UC 认证标志。")}</small></section></div>}
       {showEditProfile && <div className="modal-backdrop" onMouseDown={() => setShowEditProfile(false)}><section className="login-modal edit-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowEditProfile(false)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("编辑资料")}</h2><p>{t("这些联系方式只会在双方匹配后展示给对方。")}</p><form className="profile-contact-form" key={`edit-${profileContact.display_name}-${profileContact.contact_email}-${profileContact.phone}-${profileContact.wechat_id}`} onSubmit={saveProfileContact}><label>{t("显示名称")}<input name="display_name" defaultValue={profileContact.display_name || getUserName(user)} /></label><label>{t("专业")}<input name="major" defaultValue={profileContact.major} placeholder={t("例如：Data Science")} /></label><label>{t("联系邮箱")}<input name="contact_email" type="email" defaultValue={profileContact.contact_email || user?.email || ""} /></label><label>{t("手机号")}<input name="phone" defaultValue={profileContact.phone} placeholder={t("可选")} /></label><label>{t("微信号")}<input name="wechat_id" defaultValue={profileContact.wechat_id} placeholder={t("可选")} /></label><button className="primary-button wide" type="submit">{t("保存资料")}</button></form><small>{t("建议至少填写邮箱或微信，方便任务匹配后联系。")}</small></section></div>}
       {publicProfile && <div className="modal-backdrop" onMouseDown={() => setPublicProfile(null)}><section className="login-modal public-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setPublicProfile(null)}>×</button><div className="public-profile-head"><i>{publicProfile.initials}</i><span><small>{t("公开资料")}</small><h2>{publicProfile.name} {publicProfile.verified && <b>✓</b>}</h2><p>{publicProfile.school} · {publicProfile.major || t("未填写")}</p></span></div><div className="public-stats"><div><strong>{publicProfile.completedCount}</strong><span>{t("完成次数")}</span></div><div><strong>{publicProfile.rating.count ? publicProfile.rating.average.toFixed(1) : "-"}</strong><span>{t("平均评分")}</span></div><div><strong>{publicProfile.rating.count}</strong><span>{t("条评分")}</span></div></div><p className="profile-note">{t("联系方式仅在任务匹配后展示。")}</p></section></div>}
       {editingTask && <div className="modal-backdrop" onMouseDown={() => setEditingTask(null)}><section className="login-modal edit-profile-modal" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setEditingTask(null)}>×</button><span className="brand-mark login-logo"><i /><i /><i /></span><h2>{t("编辑任务")}</h2><p>{t("只能编辑仍在招募中的任务。")}</p><form className="profile-contact-form" onSubmit={saveTaskEdit}><label>{t("需求标题")}<input required name="title" defaultValue={editingTask.title} /></label><label>{t("任务类别")}<select required name="category" defaultValue={editingTask.category}><option>校园实拍</option><option>新生落地</option><option>经验咨询</option><option>校园互助</option><option>校园信息</option></select></label><label>{t("任务形式")}<select required name="mode" defaultValue={editingTask.mode}><option value="线下">{t("线下")}</option><option value="线上">{t("线上")}</option></select></label><label>{t("详细说明")}<input required name="description" defaultValue={editingTask.description} /></label><label>{t("地点")}<input name="location" defaultValue={editingTask.location} /></label><label>{t("希望完成时间")}<input name="due_date" type="date" defaultValue={editingTask.dueDate ?? ""} /></label><label>{t("需求类型")}<select name="reward_type" defaultValue={editingTask.reward.includes("互助") ? "mutual_help" : "paid"}><option value="paid">{t("有偿任务")}</option><option value="mutual_help">{t("免费互助")}</option></select></label><label>{t("报酬金额")}<input name="reward_amount" type="number" min="0" defaultValue={editingTask.reward.startsWith("$") ? editingTask.reward.replace("$", "") : ""} /></label><button className="primary-button wide" type="submit">{t("保存")}</button></form></section></div>}
