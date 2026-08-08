@@ -52,6 +52,19 @@ export type ApplicationRow = {
   profiles?: Pick<ProfileRow, "display_name" | "avatar_initials" | "verified_uc_email" | "school" | "major" | "contact_email" | "phone" | "wechat_id"> | null;
 };
 
+export type NotificationRow = {
+  id: string;
+  user_id: string;
+  type: "new_application" | "application_status" | "completion_waiting" | "task_completed" | "review_received";
+  title: string;
+  body: string;
+  task_id: string | null;
+  application_id: string | null;
+  review_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type ReviewRow = {
   id: string;
   task_id: string;

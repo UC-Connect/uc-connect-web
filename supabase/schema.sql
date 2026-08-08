@@ -66,11 +66,26 @@ create table if not exists public.reports (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null check (type in ('new_application', 'application_status', 'completion_waiting', 'task_completed', 'review_received')),
+  title text not null,
+  body text not null,
+  task_id uuid references public.tasks(id) on delete cascade,
+  application_id uuid references public.applications(id) on delete cascade,
+  review_id uuid references public.reviews(id) on delete cascade,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists tasks_status_created_idx on public.tasks(status, created_at desc);
 create index if not exists tasks_school_category_idx on public.tasks(school, category);
 create index if not exists tasks_author_idx on public.tasks(author_id);
 create index if not exists applications_task_idx on public.applications(task_id);
 create index if not exists applications_applicant_idx on public.applications(applicant_id);
+create index if not exists notifications_user_created_idx on public.notifications(user_id, created_at desc);
+create index if not exists notifications_unread_idx on public.notifications(user_id, read_at) where read_at is null;
 
 alter table public.profiles add column if not exists contact_email text;
 alter table public.profiles add column if not exists phone text;
@@ -79,7 +94,8 @@ alter table public.tasks add column if not exists author_completed_at timestampt
 alter table public.tasks add column if not exists applicant_completed_at timestamptz;
 
 grant usage on schema public to anon, authenticated;
-grant select on public.profiles to anon, authenticated;
+revoke select on public.profiles from anon, authenticated;
+grant select (id, display_name, school, major, avatar_initials, bio, verified_uc_email, created_at, updated_at) on public.profiles to anon, authenticated;
 grant insert, update on public.profiles to authenticated;
 grant select on public.tasks to anon, authenticated;
 grant insert, update, delete on public.tasks to authenticated;
@@ -87,6 +103,7 @@ grant select, insert, update on public.applications to authenticated;
 grant select on public.reviews to anon, authenticated;
 grant insert on public.reviews to authenticated;
 grant select, insert on public.reports to authenticated;
+grant select, update on public.notifications to authenticated;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -210,6 +227,282 @@ create trigger reviews_validate_participants
 before insert or update of task_id, reviewer_id, reviewee_id on public.reviews
 for each row execute function public.validate_review_participants();
 
+create or replace function public.get_my_profile()
+returns table (
+  id uuid,
+  display_name text,
+  school text,
+  major text,
+  contact_email text,
+  phone text,
+  wechat_id text,
+  avatar_initials text,
+  verified_uc_email boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    profiles.id,
+    profiles.display_name,
+    profiles.school,
+    profiles.major,
+    profiles.contact_email,
+    profiles.phone,
+    profiles.wechat_id,
+    profiles.avatar_initials,
+    profiles.verified_uc_email
+  from public.profiles
+  where profiles.id = auth.uid();
+$$;
+
+grant execute on function public.get_my_profile() to authenticated;
+
+create or replace function public.get_matched_contact(target_profile_id uuid, target_task_id uuid)
+returns table (
+  display_name text,
+  contact_email text,
+  phone text,
+  wechat_id text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requester uuid;
+  task_author uuid;
+  accepted_applicant uuid;
+begin
+  requester := auth.uid();
+
+  if requester is null then
+    raise exception 'Login required';
+  end if;
+
+  select tasks.author_id
+  into task_author
+  from public.tasks
+  where tasks.id = target_task_id;
+
+  select applications.applicant_id
+  into accepted_applicant
+  from public.applications
+  where applications.task_id = target_task_id
+  and applications.status = 'accepted'
+  limit 1;
+
+  if not (
+    requester = target_profile_id
+    or (requester = task_author and target_profile_id = accepted_applicant)
+    or (requester = accepted_applicant and target_profile_id = task_author)
+  ) then
+    raise exception 'Contact info is only available to matched task participants';
+  end if;
+
+  return query
+  select
+    profiles.display_name,
+    profiles.contact_email,
+    profiles.phone,
+    profiles.wechat_id
+  from public.profiles
+  where profiles.id = target_profile_id;
+end;
+$$;
+
+grant execute on function public.get_matched_contact(uuid, uuid) to authenticated;
+
+create or replace function public.create_notification(
+  target_user_id uuid,
+  notification_type text,
+  notification_title text,
+  notification_body text,
+  target_task_id uuid default null,
+  target_application_id uuid default null,
+  target_review_id uuid default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if target_user_id is null then
+    return;
+  end if;
+
+  insert into public.notifications (
+    user_id,
+    type,
+    title,
+    body,
+    task_id,
+    application_id,
+    review_id
+  )
+  values (
+    target_user_id,
+    notification_type,
+    notification_title,
+    notification_body,
+    target_task_id,
+    target_application_id,
+    target_review_id
+  );
+end;
+$$;
+
+create or replace function public.notify_application_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  task_author uuid;
+  task_title text;
+  applicant_name text;
+begin
+  select tasks.author_id, tasks.title
+  into task_author, task_title
+  from public.tasks
+  where tasks.id = new.task_id;
+
+  select profiles.display_name
+  into applicant_name
+  from public.profiles
+  where profiles.id = new.applicant_id;
+
+  perform public.create_notification(
+    task_author,
+    'new_application',
+    '收到新的任务申请',
+    coalesce(applicant_name, 'UC Student') || ' 申请了「' || coalesce(task_title, '任务') || '」',
+    new.task_id,
+    new.id,
+    null
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists applications_notify_insert on public.applications;
+create trigger applications_notify_insert
+after insert on public.applications
+for each row execute function public.notify_application_insert();
+
+create or replace function public.notify_application_status_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  task_title text;
+  status_label text;
+begin
+  if new.status = old.status then
+    return new;
+  end if;
+
+  select tasks.title
+  into task_title
+  from public.tasks
+  where tasks.id = new.task_id;
+
+  status_label := case new.status
+    when 'accepted' then '已接受'
+    when 'rejected' then '未通过'
+    when 'withdrawn' then '已撤回'
+    else '等待回复'
+  end;
+
+  perform public.create_notification(
+    new.applicant_id,
+    'application_status',
+    '申请状态已更新',
+    '你申请的「' || coalesce(task_title, '任务') || '」当前状态：' || status_label,
+    new.task_id,
+    new.id,
+    null
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists applications_notify_status_update on public.applications;
+create trigger applications_notify_status_update
+after update of status on public.applications
+for each row execute function public.notify_application_status_update();
+
+create or replace function public.notify_task_completion_update()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  accepted_applicant uuid;
+begin
+  select applications.applicant_id
+  into accepted_applicant
+  from public.applications
+  where applications.task_id = new.id
+  and applications.status = 'accepted'
+  limit 1;
+
+  if accepted_applicant is null then
+    return new;
+  end if;
+
+  if new.status = 'completed' and old.status <> 'completed' then
+    perform public.create_notification(new.author_id, 'task_completed', '任务已完成，可进行评价', '「' || new.title || '」已完成。', new.id, null, null);
+    perform public.create_notification(accepted_applicant, 'task_completed', '任务已完成，可进行评价', '「' || new.title || '」已完成。', new.id, null, null);
+  elsif new.applicant_completed_at is not null and old.applicant_completed_at is null and new.author_completed_at is null then
+    perform public.create_notification(new.author_id, 'completion_waiting', '任务等待完成确认', '对方已确认完成「' || new.title || '」，请你确认。', new.id, null, null);
+  elsif new.author_completed_at is not null and old.author_completed_at is null and new.applicant_completed_at is null then
+    perform public.create_notification(accepted_applicant, 'completion_waiting', '任务等待完成确认', '对方已确认完成「' || new.title || '」，请你确认。', new.id, null, null);
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists tasks_notify_completion_update on public.tasks;
+create trigger tasks_notify_completion_update
+after update of status, author_completed_at, applicant_completed_at on public.tasks
+for each row execute function public.notify_task_completion_update();
+
+create or replace function public.notify_review_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.create_notification(
+    new.reviewee_id,
+    'review_received',
+    '收到新的评分',
+    '你收到了一条 ' || new.rating || ' 星评分。',
+    new.task_id,
+    null,
+    new.id
+  );
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reviews_notify_insert on public.reviews;
+create trigger reviews_notify_insert
+after insert on public.reviews
+for each row execute function public.notify_review_insert();
+
 create or replace function public.confirm_task_completion(target_task_id uuid)
 returns void
 language plpgsql
@@ -316,6 +609,7 @@ alter table public.tasks enable row level security;
 alter table public.applications enable row level security;
 alter table public.reviews enable row level security;
 alter table public.reports enable row level security;
+alter table public.notifications enable row level security;
 
 drop policy if exists "Profiles are readable by everyone" on public.profiles;
 create policy "Profiles are readable by everyone"
@@ -423,3 +717,14 @@ drop policy if exists "Users can read their own reports" on public.reports;
 create policy "Users can read their own reports"
 on public.reports for select
 using (auth.uid() = reporter_id);
+
+drop policy if exists "Users can read their own notifications" on public.notifications;
+create policy "Users can read their own notifications"
+on public.notifications for select
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can mark their own notifications read" on public.notifications;
+create policy "Users can mark their own notifications read"
+on public.notifications for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
