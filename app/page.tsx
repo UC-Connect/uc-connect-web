@@ -435,6 +435,20 @@ const textMap: Record<string, string> = {
   "申请已撤回": "Application withdrawn",
   "已读": "Read",
   "未读": "Unread",
+  "完善联系方式": "Complete Contact Info",
+  "建议先填写邮箱、手机号或微信，匹配后对方才能联系到你。": "Add an email, phone number, or WeChat so matched users can reach you.",
+  "任务进度": "Task Progress",
+  "已发布": "Published",
+  "收到申请": "Applications Received",
+  "等待申请": "Waiting for applications",
+  "已接受申请": "Application Accepted",
+  "任务进入进行中": "Task is in progress",
+  "发布者选择合适的人": "Publisher chooses a match",
+  "双方确认完成": "Both Sides Confirm",
+  "等待双方确认": "Waiting for both sides",
+  "互相评价": "Mutual Rating",
+  "可进行评价": "Ready to rate",
+  "完成后开放": "Available after completion",
 };
 
 type PublishDraft = {
@@ -783,7 +797,8 @@ export default function Home() {
   }, [language]);
 
   useEffect(() => {
-    const taskId = new URLSearchParams(window.location.search).get("task");
+    const pathTaskMatch = window.location.pathname.match(/^\/tasks\/([^/]+)/);
+    const taskId = pathTaskMatch?.[1] ?? new URLSearchParams(window.location.search).get("task");
     if (!taskId) return;
 
     const task = tasks.find((item) => item.id === taskId);
@@ -913,6 +928,36 @@ export default function Home() {
     selectedTask ? appliedTasks.find((application) => application.taskId === selectedTask.id) ?? null : null
   ), [appliedTasks, selectedTask]);
   const isAcceptedApplicantForSelectedTask = selectedAppliedTask?.status === "accepted";
+  const hasContactInfo = Boolean(profileContact.contact_email || profileContact.phone || profileContact.wechat_id);
+  const selectedTaskTimeline = useMemo(() => {
+    if (!selectedTask) return [];
+
+    const matched = selectedTask.status === "matched" || selectedTask.status === "in_progress" || selectedTask.status === "completed";
+    return [
+      { label: t("已发布"), detail: tv(formatRelativeTime(selectedTask.createdAt)), done: true },
+      {
+        label: t("收到申请"),
+        detail: selectedTask.applicants > 0 ? `${selectedTask.applicants} ${t("份申请")}` : t("等待申请"),
+        done: selectedTask.applicants > 0,
+      },
+      {
+        label: t("已接受申请"),
+        detail: matched ? t("任务进入进行中") : t("发布者选择合适的人"),
+        done: matched,
+      },
+      {
+        label: t("双方确认完成"),
+        detail: selectedTask.status === "completed" ? t("已完成") : t("等待双方确认"),
+        done: selectedTask.status === "completed",
+        current: matched && selectedTask.status !== "completed",
+      },
+      {
+        label: t("互相评价"),
+        detail: selectedTask.status === "completed" ? t("可进行评价") : t("完成后开放"),
+        done: false,
+      },
+    ];
+  }, [selectedTask, language]);
 
   function requireAuth(action: () => void, message = "请先登录后继续") {
     if (!user) {
@@ -1071,7 +1116,7 @@ export default function Home() {
     setSelectedTask(task);
     setShowApply(false);
     setApplied(false);
-    window.history.pushState({}, "", `/?task=${task.id}`);
+    window.history.pushState({}, "", `/tasks/${task.id}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -1079,7 +1124,7 @@ export default function Home() {
     setSelectedTask(null);
     setShowApply(false);
     setApplied(false);
-    if (updateUrl && window.location.search.includes("task=")) {
+    if (updateUrl && (window.location.search.includes("task=") || window.location.pathname.startsWith("/tasks/"))) {
       window.history.pushState({}, "", "/");
     }
   }
@@ -1766,12 +1811,14 @@ export default function Home() {
                 <div><span>{t("任务形式")}</span><strong>{tv(selectedTask.mode)}</strong></div>
               </div>
               <div className="detail-copy"><h2>{t("需求说明")}</h2><p>{selectedTask.description}</p><p>{t("申请时可以简单介绍你的时间安排。如果有相关经验，也请一起说明。")}</p></div>
+              <div className="task-timeline"><h2>{t("任务进度")}</h2>{selectedTaskTimeline.map((step) => <div className={`timeline-step ${step.done ? "done" : ""} ${step.current ? "current" : ""}`} key={step.label}><i>{step.done ? "✓" : step.current ? "…" : ""}</i><span><strong>{step.label}</strong><small>{step.detail}</small></span></div>)}</div>
               <div className="safety-note"><span>◇</span><div><strong>{t("安全提醒")}</strong><p>{t("请勿提前转账或分享敏感个人信息。接受申请后再交换联系方式。")}</p></div></div>
             </article>
             <aside className="apply-card">
               <span>{t("任务报酬")}</span><strong>{tv(selectedTask.reward)}</strong><small>{t("平台暂不处理真实付款")}</small>
               <hr />
               <div className="apply-stat"><span>{t("已有申请")}</span><b>{selectedTask.applicants}</b></div>
+              {user && !hasContactInfo && <div className="profile-reminder"><strong>{t("完善联系方式")}</strong><p>{t("建议先填写邮箱、手机号或微信，匹配后对方才能联系到你。")}</p><button onClick={() => setShowEditProfile(true)}>{t("编辑资料")}</button></div>}
               {isOwnSelectedTask && <button className="primary-button wide" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("管理任务")}</button>}
               {isOwnSelectedTask && selectedTask.applicants > 0 && <button className="ghost-outline wide-action" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("查看申请")}（{selectedTask.applicants}）</button>}
               {isOwnSelectedTask && selectedTask.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openMatchedContact(selectedAcceptedApplication.applicantId, selectedAcceptedApplication.taskId, selectedAcceptedApplication.applicantName) : flash("还没有已接受的申请人")}>{t("联系对方")}</button>}
@@ -1884,6 +1931,7 @@ export default function Home() {
       {view === "profile" && (
         <section className="app-page profile-page">
           <div className="profile-hero"><div className="profile-avatar">{getUserInitials(user)}</div><div><span className="verified-pill">✓ {t("已登录")}</span><h1>{profileContact.display_name || getUserName(user)}</h1><p>{tv(getUserSchool(user))} · {user?.email}</p></div><div className="profile-hero-actions"><button className="ghost-outline" onClick={() => setShowEditProfile(true)}>{t("编辑资料")}</button><button className="ghost-outline" onClick={signOut}>{t("退出登录")}</button></div></div>
+          {!hasContactInfo && <div className="profile-reminder page-reminder"><strong>{t("完善联系方式")}</strong><p>{t("建议先填写邮箱、手机号或微信，匹配后对方才能联系到你。")}</p><button onClick={() => setShowEditProfile(true)}>{t("编辑资料")}</button></div>}
           <div className="profile-layout">
             <aside className="profile-sidebar"><h3>{t("资料摘要")}</h3><p>{t("联系方式只会在双方匹配后展示给对方，不会出现在公开任务列表。")}</p><dl><div><dt>{t("显示名称")}</dt><dd>{profileContact.display_name || getUserName(user)}</dd></div><div><dt>{t("专业")}</dt><dd>{profileContact.major || t("未填写")}</dd></div><div><dt>{t("联系邮箱")}</dt><dd>{profileContact.contact_email || user?.email || t("未填写")}</dd></div><div><dt>{t("手机号")}</dt><dd>{profileContact.phone || t("未填写")}</dd></div><div><dt>{t("微信号")}</dt><dd>{profileContact.wechat_id || t("未填写")}</dd></div><div><dt>{t("所在校区")}</dt><dd>{tv(getUserSchool(user))}</dd></div></dl></aside>
             <div className="profile-content"><div className="profile-stats"><div><strong>{postedTasks.length}</strong><span>{t("发布任务")}</span></div><div><strong>{appliedTasks.length}</strong><span>{t("申请任务")}</span></div><div><strong>{completedPostedCount}</strong><span>{t("完成任务")}</span></div></div><div className="reviews"><div className="table-title"><h2>{t("收到的评价")}</h2><span>{reviewSummary.count > 0 ? `${reviewSummary.count} ${t("条评分")}` : t("暂无评分")}</span></div>{reviewSummary.count > 0 ? <div className="rating-summary"><strong>{reviewSummary.average.toFixed(1)}</strong><span>{renderStars(Math.round(reviewSummary.average))}</span><small>{t("基于")} {reviewSummary.count} {t("条评分")}</small></div> : <div className="empty-state"><span>☆</span><h3>{t("还没有评分")}</h3><p>{t("完成任务后，对方给你的星级会显示在这里。")}</p></div>}</div></div>
