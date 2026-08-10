@@ -403,6 +403,7 @@ const textMap: Record<string, string> = {
   "已退出登录": "Logged out",
   "联系方式已保存": "Contact info saved",
   "资料没有写入数据库，请先运行最新 Supabase SQL 后再试": "Profile was not saved to the database. Run the latest Supabase SQL and try again.",
+  "资料保存后回读不一致，请检查 Supabase profiles 表": "Saved profile did not match the database readback. Check the Supabase profiles table.",
   "请先配置 Supabase 环境变量": "Please configure Supabase environment variables first",
   "登录成功": "Logged in",
   "账号已创建，请再点一次登录": "Account created. Please click log in again.",
@@ -1303,7 +1304,7 @@ export default function Home() {
       savedWechat !== (payload.wechat_id ?? "")
     ) {
       console.warn("Profile save verification failed", { verifyError, payload, savedProfile });
-      flash(t("资料没有写入数据库，请先运行最新 Supabase SQL 后再试"));
+      flash(t("资料保存后回读不一致，请检查 Supabase profiles 表"));
       return;
     }
 

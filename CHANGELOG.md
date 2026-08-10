@@ -33,6 +33,8 @@ UC Connect 的重要更新都会记录在这里。
   将资料保存 RPC 改为基于 upsert 的写入方式，统一处理已有资料行和缺失资料行。
 - Fixed an ambiguous `id` reference in the profile-save RPC by targeting the `profiles_pkey` constraint explicitly.
   修复资料保存 RPC 中 `id` 字段引用不明确的问题，改为显式使用 `profiles_pkey` 约束处理冲突。
+- Clarified the profile-save verification message so database readback mismatches point to the `profiles` table for diagnosis.
+  优化资料保存校验失败提示，将问题定位到 `profiles` 表回读不一致，方便继续排查。
 - Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
   优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
 - Separated login and sign-up paths and fixed invalid profile school metadata during registration.
