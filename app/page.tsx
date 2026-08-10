@@ -416,6 +416,10 @@ const textMap: Record<string, string> = {
   "任务已完成": "Task completed",
   "任务状态已更新": "Task status updated",
   "对方还没有填写联系方式": "The other user has not added contact info yet",
+  "正在读取联系方式": "Loading contact info",
+  "联系方式暂时无法读取，请刷新后再试": "Contact info is temporarily unavailable. Please refresh and try again.",
+  "已接受，可以联系对方": "Accepted. You can contact the other user.",
+  "状态更新于": "Updated",
   "你已经评价过对方": "You have already rated this user",
   "评价已提交": "Rating submitted",
   "还没有已接受的申请人": "No accepted applicant yet",
@@ -475,6 +479,7 @@ type AppliedTask = {
   id: string;
   status: ApplicationRow["status"];
   createdAt: string;
+  updatedAt: string;
   taskId: string;
   task: {
     authorId: string;
@@ -513,6 +518,7 @@ type ReceivedApplication = {
   availableTime: string;
   status: ApplicationRow["status"];
   createdAt: string;
+  updatedAt: string;
 };
 
 type ContactInfo = {
@@ -647,6 +653,7 @@ function mapApplicationRow(row: ApplicationRow): AppliedTask | null {
     id: row.id,
     status: row.status,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
     taskId: row.task_id,
     task: {
       title: row.tasks.title,
@@ -690,6 +697,7 @@ function mapReceivedApplicationRow(row: ApplicationRow): ReceivedApplication | n
     availableTime: row.available_time,
     status: row.status,
     createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 
@@ -754,6 +762,7 @@ export default function Home() {
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | TaskRow["status"]>("all");
   const [profileContact, setProfileContact] = useState<ProfileContact>({ display_name: "", major: "", contact_email: "", phone: "", wechat_id: "" });
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
+  const [contactLoadingKey, setContactLoadingKey] = useState<string | null>(null);
   const [publicProfile, setPublicProfile] = useState<PublicProfile | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [reviewSummary, setReviewSummary] = useState<ReviewSummary>({ average: 0, count: 0 });
@@ -810,6 +819,24 @@ export default function Home() {
     document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
     window.localStorage.setItem("uc-connect-language", language);
   }, [language]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const refresh = () => {
+      loadTasks();
+      loadApplications();
+      loadReceivedApplications();
+      loadNotifications();
+    };
+
+    window.addEventListener("focus", refresh);
+    const interval = window.setInterval(refresh, 45000);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(interval);
+    };
+  }, [user]);
 
   useEffect(() => {
     const pathTaskMatch = window.location.pathname.match(/^\/tasks\/([^/]+)/);
@@ -869,7 +896,7 @@ export default function Home() {
       body: language === "zh"
         ? `${application.applicantName} 申请了「${application.taskTitle}」：${application.message}`
         : `${application.applicantName} ${t("申请了")} "${application.taskTitle}": ${application.message}`,
-      time: application.createdAt,
+      time: application.updatedAt,
       status: tv(formatApplicationStatus(application.status)),
     })),
     ...appliedTasks.map((application) => ({
@@ -878,7 +905,7 @@ export default function Home() {
       body: language === "zh"
         ? `你申请的「${application.task.title}」当前状态：${formatApplicationStatus(application.status)}`
         : `${t("你申请的")} "${application.task.title}" ${t("当前状态")}: ${tv(formatApplicationStatus(application.status))}`,
-      time: application.createdAt,
+      time: application.updatedAt,
       status: tv(formatApplicationStatus(application.status)),
     })),
     ...postedTasks
@@ -906,7 +933,7 @@ export default function Home() {
     })), ...appliedTasks.filter((application) => application.task.status === "completed").map((application) => ({
       id: application.taskId,
       title: application.task.title,
-      time: application.createdAt,
+      time: application.updatedAt,
     }))]
       .map((task) => ({
         id: `completed-${task.id}`,
@@ -987,9 +1014,11 @@ export default function Home() {
   async function loadTasks() {
     if (!supabase) return tasks;
     setIsLoadingTasks(true);
+
+    const taskSelect = "*, profiles(display_name, avatar_initials, verified_uc_email)";
     let query = supabase
       .from("tasks")
-      .select("*, profiles(display_name, avatar_initials, verified_uc_email)")
+      .select(taskSelect)
       .order("created_at", { ascending: false });
 
     query = user
@@ -998,6 +1027,29 @@ export default function Home() {
 
     const { data, error } = await query;
 
+    let appliedTaskRows: TaskRow[] = [];
+    if (!error && user) {
+      const { data: applicationRows, error: applicationError } = await supabase
+        .from("applications")
+        .select("task_id")
+        .eq("applicant_id", user.id)
+        .neq("status", "withdrawn");
+
+      if (!applicationError) {
+        const appliedTaskIds = [...new Set((applicationRows ?? []).map((row) => row.task_id).filter(Boolean))];
+        if (appliedTaskIds.length > 0) {
+          const { data: appliedTasksData, error: appliedTasksError } = await supabase
+            .from("tasks")
+            .select(taskSelect)
+            .in("id", appliedTaskIds);
+
+          if (!appliedTasksError) {
+            appliedTaskRows = (appliedTasksData ?? []) as TaskRow[];
+          }
+        }
+      }
+    }
+
     setIsLoadingTasks(false);
 
     if (error) {
@@ -1005,7 +1057,11 @@ export default function Home() {
       return tasks;
     }
 
-    const nextTasks = ((data ?? []) as TaskRow[]).map(mapTaskRow);
+    const taskRowsById = new Map<string, TaskRow>();
+    [...((data ?? []) as TaskRow[]), ...appliedTaskRows].forEach((task) => taskRowsById.set(task.id, task));
+    const nextTasks = [...taskRowsById.values()]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map(mapTaskRow);
     setTasks(nextTasks);
     return nextTasks;
   }
@@ -1660,25 +1716,33 @@ export default function Home() {
   async function openMatchedContact(targetProfileId: string, taskId: string, fallbackName: string) {
     if (!supabase || !user) return;
 
-    const { data, error } = await supabase
-      .rpc("get_matched_contact", {
-        target_profile_id: targetProfileId,
-        target_task_id: taskId,
-      })
-      .single();
+    const loadingKey = `${taskId}:${targetProfileId}`;
+    setContactLoadingKey(loadingKey);
 
-    if (error) {
-      flash(error.message);
-      return;
+    try {
+      const { data, error } = await supabase
+        .rpc("get_matched_contact", {
+          target_profile_id: targetProfileId,
+          target_task_id: taskId,
+        })
+        .single();
+
+      if (error) {
+        console.warn("Failed to load matched contact", error);
+        flash(t("联系方式暂时无法读取，请刷新后再试"));
+        return;
+      }
+
+      const contact = data as { display_name: string | null; contact_email: string | null; phone: string | null; wechat_id: string | null };
+      openContactInfo({
+        name: contact.display_name ?? fallbackName,
+        email: contact.contact_email,
+        phone: contact.phone,
+        wechat: contact.wechat_id,
+      });
+    } finally {
+      setContactLoadingKey((current) => (current === loadingKey ? null : current));
     }
-
-    const contact = data as { display_name: string | null; contact_email: string | null; phone: string | null; wechat_id: string | null };
-    openContactInfo({
-      name: contact.display_name ?? fallbackName,
-      email: contact.contact_email,
-      phone: contact.phone,
-      wechat: contact.wechat_id,
-    });
   }
 
   function hasReviewed(taskId: string, revieweeId: string) {
@@ -1859,12 +1923,12 @@ export default function Home() {
               {user && !hasContactInfo && <div className="profile-reminder"><strong>{t("完善联系方式")}</strong><p>{t("建议先填写邮箱、手机号或微信，匹配后对方才能联系到你。")}</p><button onClick={() => setShowEditProfile(true)}>{t("编辑资料")}</button></div>}
               {isOwnSelectedTask && <button className="primary-button wide" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("管理任务")}</button>}
               {isOwnSelectedTask && selectedTask.applicants > 0 && <button className="ghost-outline wide-action" onClick={() => { setMineTab("posted"); setManagedTaskId(selectedTask.id); navigate("mine"); }}>{t("查看申请")}（{selectedTask.applicants}）</button>}
-              {isOwnSelectedTask && selectedTask.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openMatchedContact(selectedAcceptedApplication.applicantId, selectedAcceptedApplication.taskId, selectedAcceptedApplication.applicantName) : flash("还没有已接受的申请人")}>{t("联系对方")}</button>}
-              {isOwnSelectedTask && selectedTask.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedTask.authorCompletedAt ? flash("你已确认完成") : confirmTaskCompletion(selectedTask)}>{selectedTask.authorCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
+              {isOwnSelectedTask && (selectedTask.status === "in_progress" || selectedTask.status === "matched") && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openMatchedContact(selectedAcceptedApplication.applicantId, selectedAcceptedApplication.taskId, selectedAcceptedApplication.applicantName) : flash("还没有已接受的申请人")}>{t("联系对方")}</button>}
+              {isOwnSelectedTask && (selectedTask.status === "in_progress" || selectedTask.status === "matched") && <button className="ghost-outline wide-action" onClick={() => selectedTask.authorCompletedAt ? flash("你已确认完成") : confirmTaskCompletion(selectedTask)}>{selectedTask.authorCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
               {isOwnSelectedTask && selectedTask.status === "completed" && <button className="ghost-outline wide-action" onClick={() => selectedAcceptedApplication ? openReviewTarget({ taskId: selectedTask.id, revieweeId: selectedAcceptedApplication.applicantId, name: selectedAcceptedApplication.applicantName }) : flash("还没有已接受的申请人")}>{selectedAcceptedApplication && hasReviewed(selectedTask.id, selectedAcceptedApplication.applicantId) ? t("已评价") : t("评价对方")}</button>}
               {!isOwnSelectedTask && selectedAppliedTask && <div className="success-box"><span>✓</span><strong>{tv(formatApplicationStatus(selectedAppliedTask.status))}</strong><p>{selectedAppliedTask.status === "accepted" ? t("双方确认后才会进入已完成并开放评价。") : t("发布者选择后会通知你。")}</p></div>}
               {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && <button className="ghost-outline wide-action" onClick={() => openMatchedContact(selectedAppliedTask!.task.authorId, selectedAppliedTask!.taskId, selectedAppliedTask!.author.name)}>{t("联系对方")}</button>}
-              {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && selectedAppliedTask?.task.status === "in_progress" && <button className="ghost-outline wide-action" onClick={() => selectedAppliedTask.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: selectedAppliedTask.taskId })}>{selectedAppliedTask.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
+              {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && (selectedAppliedTask?.task.status === "in_progress" || selectedAppliedTask?.task.status === "matched") && <button className="ghost-outline wide-action" onClick={() => selectedAppliedTask.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: selectedAppliedTask.taskId })}>{selectedAppliedTask.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}
               {!isOwnSelectedTask && isAcceptedApplicantForSelectedTask && selectedAppliedTask?.task.status === "completed" && <button className="ghost-outline wide-action" onClick={() => openReviewTarget({ taskId: selectedAppliedTask.taskId, revieweeId: selectedAppliedTask.task.authorId, name: selectedAppliedTask.author.name })}>{hasReviewed(selectedAppliedTask.taskId, selectedAppliedTask.task.authorId) ? t("已评价") : t("评价发布者")}</button>}
               {!isOwnSelectedTask && !selectedAppliedTask && !showApply && !applied && <button className="primary-button wide" onClick={() => requireAuth(() => setShowApply(true), "请先登录后再申请任务")}>{t("申请接取")}</button>}
               {!isOwnSelectedTask && showApply && !applied && <form onSubmit={handleApply} className="apply-form">
@@ -1944,7 +2008,7 @@ export default function Home() {
             <div className="task-table applied-table">
               <div className="table-title"><h2>{t("申请记录")}</h2><span>{t("状态有变化时会收到提醒")}</span></div>
               {appliedTasks.map((application) => (
-                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {tv(application.task.mode)} · {t("申请于")} {tv(formatRelativeTime(application.createdAt))}</small></div><b>{tv(application.task.reward)}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" onClick={() => openMatchedContact(application.task.authorId, application.taskId, application.author.name)}>{t("联系对方")}</button>}{application.status === "accepted" && application.task.status === "in_progress" && <button onClick={() => application.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: application.taskId })}>{application.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}{application.status === "accepted" && application.task.status === "completed" && <button onClick={() => openReviewTarget({ taskId: application.taskId, revieweeId: application.task.authorId, name: application.author.name })}>{hasReviewed(application.taskId, application.task.authorId) ? t("已评价") : t("评价发布者")}</button>}{application.status === "pending" && <button onClick={() => withdrawApplication(application)}>{t("撤回")}</button>}<button onClick={() => { navigate("home"); openTask(tasks.find((task) => task.id === application.taskId) ?? null); }}>{t("查看详情")}</button></div></div>
+                <div className="task-row" key={application.id}><span className={`status ${application.status === "pending" ? "waiting" : "progress"}`}>{tv(formatApplicationStatus(application.status))}</span><div><strong>{application.task.title}</strong><small>{application.task.school} · {tv(application.task.mode)} · {t("申请于")} {tv(formatRelativeTime(application.createdAt))}</small>{application.status === "accepted" && <em className="match-hint">{t("已接受，可以联系对方")} · {t("状态更新于")} {tv(formatRelativeTime(application.updatedAt))}</em>}</div><b>{tv(application.task.reward)}</b><div className="row-actions">{application.status === "accepted" && <button className="action-strong" disabled={contactLoadingKey === `${application.taskId}:${application.task.authorId}`} onClick={() => openMatchedContact(application.task.authorId, application.taskId, application.author.name)}>{contactLoadingKey === `${application.taskId}:${application.task.authorId}` ? t("正在读取联系方式") : t("联系对方")}</button>}{application.status === "accepted" && application.task.status === "in_progress" && <button onClick={() => application.task.applicantCompletedAt ? flash("你已确认完成") : confirmTaskCompletion({ id: application.taskId })}>{application.task.applicantCompletedAt ? t("等待对方确认") : t("确认完成")}</button>}{application.status === "accepted" && application.task.status === "completed" && <button onClick={() => openReviewTarget({ taskId: application.taskId, revieweeId: application.task.authorId, name: application.author.name })}>{hasReviewed(application.taskId, application.task.authorId) ? t("已评价") : t("评价发布者")}</button>}{application.status === "pending" && <button onClick={() => withdrawApplication(application)}>{t("撤回")}</button>}<button onClick={() => { navigate("home"); openTask(tasks.find((task) => task.id === application.taskId) ?? null); }}>{t("查看详情")}</button></div></div>
               ))}
               {appliedTasks.length === 0 && <div className="empty-state"><span>⌕</span><h3>{t("还没有申请记录")}</h3><p>{t("申请任务后，会显示在这里。")}</p></div>}
             </div>

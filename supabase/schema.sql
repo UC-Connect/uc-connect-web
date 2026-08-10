@@ -43,6 +43,7 @@ create table if not exists public.applications (
   available_time text not null,
   status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected', 'withdrawn')),
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   unique (task_id, applicant_id)
 );
 
@@ -79,11 +80,14 @@ create table if not exists public.notifications (
   created_at timestamptz not null default now()
 );
 
+alter table public.applications add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists tasks_status_created_idx on public.tasks(status, created_at desc);
 create index if not exists tasks_school_category_idx on public.tasks(school, category);
 create index if not exists tasks_author_idx on public.tasks(author_id);
 create index if not exists applications_task_idx on public.applications(task_id);
 create index if not exists applications_applicant_idx on public.applications(applicant_id);
+create index if not exists applications_applicant_updated_idx on public.applications(applicant_id, updated_at desc);
 create index if not exists notifications_user_created_idx on public.notifications(user_id, created_at desc);
 create index if not exists notifications_unread_idx on public.notifications(user_id, read_at) where read_at is null;
 
@@ -123,6 +127,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists tasks_set_updated_at on public.tasks;
 create trigger tasks_set_updated_at
 before update on public.tasks
+for each row execute function public.set_updated_at();
+
+drop trigger if exists applications_set_updated_at on public.applications;
+create trigger applications_set_updated_at
+before update on public.applications
 for each row execute function public.set_updated_at();
 
 create or replace function public.refresh_task_applications_count()

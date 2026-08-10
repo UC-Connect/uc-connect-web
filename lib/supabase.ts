@@ -46,6 +46,7 @@ export type ApplicationRow = {
   available_time: string;
   status: "pending" | "accepted" | "rejected" | "withdrawn";
   created_at: string;
+  updated_at: string | null;
   tasks?: (Pick<TaskRow, "id" | "author_id" | "title" | "school" | "mode" | "reward_amount" | "reward_type" | "status" | "author_completed_at" | "applicant_completed_at" | "created_at"> & {
     profiles?: Pick<ProfileRow, "display_name" | "contact_email" | "phone" | "wechat_id"> | null;
   }) | null;

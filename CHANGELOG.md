@@ -19,6 +19,12 @@ UC Connect 的重要更新都会记录在这里。
   在新链接改为 `/tasks/[id]` 的同时，继续兼容旧的 `?task=` 链接。
 
 ### Fixed / 修复
+- Fixed the application-taking flow so accepted applicants can still load matched task details after the task leaves the public open list.
+  修复接任务流程中，申请人被接受后任务不再公开招募、导致详情和后续操作可能读取不到的问题。
+- Fixed weak accepted-application feedback by tracking application status update time and making accepted applications show a clear contact prompt.
+  修复申请被接受后提示不明显的问题，新增申请状态更新时间，并在“我申请的”中明确提示可联系对方。
+- Improved matched-contact loading so contact buttons show a loading state and fail with a friendly message instead of appearing unresponsive.
+  优化匹配后联系方式读取，联系按钮会显示读取状态，失败时给出友好提示，不再像点击无反应。
 - Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
   优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
 - Separated login and sign-up paths and fixed invalid profile school metadata during registration.
