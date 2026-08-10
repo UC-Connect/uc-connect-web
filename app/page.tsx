@@ -395,6 +395,7 @@ const textMap: Record<string, string> = {
   "时间待定": "Time TBD",
   "未登录用户": "Guest",
   "未设置学校": "School not set",
+  "暂未认证学校": "School not verified",
   "读取数据库失败，请稍后再试": "Failed to load database. Please try again later.",
   "读取申请记录失败": "Failed to load application records",
   "读取评价失败": "Failed to load ratings",
@@ -728,17 +729,19 @@ function getUserInitials(user: User | null) {
 }
 
 function getUserSchool(user: User | null) {
-  const email = user?.email ?? "";
+  const email = (user?.email ?? "").toLowerCase();
   if (email.endsWith("@ucsd.edu")) return "UCSD";
-  if (email.endsWith("@ucla.edu")) return "UCLA";
+  if (email.endsWith("@g.ucla.edu")) return "UCLA";
   if (email.endsWith("@berkeley.edu")) return "UCB";
-  return "未设置学校";
+  return "暂未认证学校";
 }
 
-function inferSchoolFromEmail(email: string): "UCB" | "UCSD" | "UCLA" {
+function inferSchoolFromEmail(email: string): "UCB" | "UCSD" | "UCLA" | undefined {
+  email = email.toLowerCase();
   if (email.endsWith("@ucsd.edu")) return "UCSD";
-  if (email.endsWith("@ucla.edu")) return "UCLA";
-  return "UCB";
+  if (email.endsWith("@g.ucla.edu")) return "UCLA";
+  if (email.endsWith("@berkeley.edu")) return "UCB";
+  return undefined;
 }
 
 export default function Home() {
@@ -1275,9 +1278,9 @@ export default function Home() {
         .upsert({
           id: user.id,
           ...payload,
-          school: getUserSchool(user) === "未设置学校" ? "UCB" : getUserSchool(user),
+          school: getUserSchool(user) === "暂未认证学校" ? "UCB" : getUserSchool(user),
           avatar_initials: getUserInitials(user),
-          verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
+          verified_uc_email: Boolean(user.email?.toLowerCase().match(/@berkeley\.edu$|@ucsd\.edu$|@g\.ucla\.edu$/)),
         }, { onConflict: "id" });
 
       if (fallbackError) {
@@ -1423,7 +1426,7 @@ export default function Home() {
       display_name: user.email?.split("@")[0] ?? "UC Student",
       school: String(form.get("school")) as Task["school"],
       avatar_initials: (user.email?.slice(0, 2) ?? "UC").toUpperCase(),
-      verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
+      verified_uc_email: Boolean(user.email?.toLowerCase().match(/@berkeley\.edu$|@ucsd\.edu$|@g\.ucla\.edu$/)),
     }, { onConflict: "id" });
 
     if (profileError) {
@@ -1746,7 +1749,7 @@ export default function Home() {
     setPublicProfile({
       id: profile.id,
       name: profile.display_name,
-      school: profile.school,
+      school: profile.verified_uc_email ? profile.school : t("暂未认证学校"),
       major: profile.major,
       initials: profile.avatar_initials,
       verified: profile.verified_uc_email,

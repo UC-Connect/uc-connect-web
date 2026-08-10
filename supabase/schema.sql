@@ -307,10 +307,11 @@ begin
   from auth.users
   where auth.users.id = requester;
 
-  email_domain := split_part(coalesce(user_email, ''), '@', 2);
+  email_domain := lower(split_part(coalesce(user_email, ''), '@', 2));
   profile_school := case
+    when email_domain = 'berkeley.edu' then 'UCB'
     when email_domain = 'ucsd.edu' then 'UCSD'
-    when email_domain = 'ucla.edu' then 'UCLA'
+    when email_domain = 'g.ucla.edu' then 'UCLA'
     else 'UCB'
   end;
 
@@ -336,14 +337,8 @@ begin
     upper(left(coalesce(nullif(trim(profile_display_name), ''), user_email, 'UC'), 2)),
     email_domain in (
       'berkeley.edu',
-      'ucla.edu',
-      'ucsd.edu',
-      'ucsb.edu',
-      'uci.edu',
-      'ucdavis.edu',
-      'ucsc.edu',
-      'ucr.edu',
-      'ucmerced.edu'
+      'g.ucla.edu',
+      'ucsd.edu'
     )
   )
   on conflict on constraint profiles_pkey do update
@@ -680,11 +675,11 @@ declare
   email_domain text;
   profile_school text;
 begin
-  email_domain := split_part(new.email, '@', 2);
+  email_domain := lower(split_part(new.email, '@', 2));
   profile_school := case
-    when new.raw_user_meta_data->>'school' in ('UCB', 'UCSD', 'UCLA') then new.raw_user_meta_data->>'school'
+    when email_domain = 'berkeley.edu' then 'UCB'
     when email_domain = 'ucsd.edu' then 'UCSD'
-    when email_domain = 'ucla.edu' then 'UCLA'
+    when email_domain = 'g.ucla.edu' then 'UCLA'
     else 'UCB'
   end;
 
@@ -704,14 +699,8 @@ begin
     upper(left(coalesce(new.raw_user_meta_data->>'display_name', new.email, 'UC'), 2)),
     email_domain in (
       'berkeley.edu',
-      'ucla.edu',
-      'ucsd.edu',
-      'ucsb.edu',
-      'uci.edu',
-      'ucdavis.edu',
-      'ucsc.edu',
-      'ucr.edu',
-      'ucmerced.edu'
+      'g.ucla.edu',
+      'ucsd.edu'
     )
   )
   on conflict (id) do nothing;
