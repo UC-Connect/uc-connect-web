@@ -402,6 +402,7 @@ const textMap: Record<string, string> = {
   "读取公开资料失败": "Failed to load public profile",
   "已退出登录": "Logged out",
   "联系方式已保存": "Contact info saved",
+  "资料没有写入数据库，请先运行最新 Supabase SQL 后再试": "Profile was not saved to the database. Run the latest Supabase SQL and try again.",
   "请先配置 Supabase 环境变量": "Please configure Supabase environment variables first",
   "登录成功": "Logged in",
   "账号已创建，请再点一次登录": "Account created. Please click log in again.",
@@ -1270,8 +1271,13 @@ export default function Home() {
     if (error?.code === "PGRST202") {
       const { error: fallbackError } = await supabase
         .from("profiles")
-        .update(payload)
-        .eq("id", user.id);
+        .upsert({
+          id: user.id,
+          ...payload,
+          school: getUserSchool(user) === "未设置学校" ? "UCB" : getUserSchool(user),
+          avatar_initials: getUserInitials(user),
+          verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
+        }, { onConflict: "id" });
 
       if (fallbackError) {
         flash(fallbackError.message);
@@ -1279,7 +1285,28 @@ export default function Home() {
       }
     }
 
-    const savedProfile = (data ?? payload) as ProfileContact;
+    const { data: verifiedData, error: verifyError } = await supabase
+      .rpc("get_my_profile")
+      .single();
+
+    const savedProfile = (verifiedData ?? data ?? payload) as ProfileContact;
+    const savedContactEmail = savedProfile.contact_email ?? "";
+    const savedMajor = savedProfile.major ?? "";
+    const savedPhone = savedProfile.phone ?? "";
+    const savedWechat = savedProfile.wechat_id ?? "";
+
+    if (
+      verifyError ||
+      savedMajor !== (payload.major ?? "") ||
+      savedContactEmail !== (payload.contact_email ?? "") ||
+      savedPhone !== (payload.phone ?? "") ||
+      savedWechat !== (payload.wechat_id ?? "")
+    ) {
+      console.warn("Profile save verification failed", { verifyError, payload, savedProfile });
+      flash(t("资料没有写入数据库，请先运行最新 Supabase SQL 后再试"));
+      return;
+    }
+
     setProfileContact({
       display_name: savedProfile.display_name ?? payload.display_name,
       major: savedProfile.major ?? "",
