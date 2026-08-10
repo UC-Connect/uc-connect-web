@@ -25,6 +25,8 @@ UC Connect 的重要更新都会记录在这里。
   修复申请被接受后提示不明显的问题，新增申请状态更新时间，并在“我申请的”中明确提示可联系对方。
 - Improved matched-contact loading so contact buttons show a loading state and fail with a friendly message instead of appearing unresponsive.
   优化匹配后联系方式读取，联系按钮会显示读取状态，失败时给出友好提示，不再像点击无反应。
+- Fixed profile contact persistence by saving profile edits through a dedicated Supabase RPC instead of a broad profile upsert.
+  修复联系方式下次登录丢失的问题，资料编辑改为通过专门的 Supabase RPC 保存，不再使用宽泛的 profile upsert。
 - Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
   优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
 - Separated login and sign-up paths and fixed invalid profile school metadata during registration.

@@ -1245,30 +1245,47 @@ export default function Home() {
 
     const form = new FormData(event.currentTarget);
     const payload = {
-      id: user.id,
       display_name: String(form.get("display_name") ?? getUserName(user)).trim() || getUserName(user),
-      school: getUserSchool(user) === "未设置学校" ? "UCB" : getUserSchool(user),
       major: String(form.get("major") ?? "").trim() || null,
       contact_email: String(form.get("contact_email") ?? "").trim() || user.email || null,
       phone: String(form.get("phone") ?? "").trim() || null,
       wechat_id: String(form.get("wechat_id") ?? "").trim() || null,
-      avatar_initials: getUserInitials(user),
-      verified_uc_email: Boolean(user.email?.match(/@(berkeley|ucla|ucsd|ucsb|uci|ucdavis|ucsc|ucr|ucmerced)\.edu$/)),
     };
 
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+    const { data, error } = await supabase
+      .rpc("update_my_profile", {
+        profile_display_name: payload.display_name,
+        profile_major: payload.major ?? "",
+        profile_contact_email: payload.contact_email ?? "",
+        profile_phone: payload.phone ?? "",
+        profile_wechat_id: payload.wechat_id ?? "",
+      })
+      .single();
 
-    if (error) {
+    if (error && error.code !== "PGRST202") {
       flash(error.message);
       return;
     }
 
+    if (error?.code === "PGRST202") {
+      const { error: fallbackError } = await supabase
+        .from("profiles")
+        .update(payload)
+        .eq("id", user.id);
+
+      if (fallbackError) {
+        flash(fallbackError.message);
+        return;
+      }
+    }
+
+    const savedProfile = (data ?? payload) as ProfileContact;
     setProfileContact({
-      display_name: payload.display_name,
-      major: payload.major ?? "",
-      contact_email: payload.contact_email ?? "",
-      phone: payload.phone ?? "",
-      wechat_id: payload.wechat_id ?? "",
+      display_name: savedProfile.display_name ?? payload.display_name,
+      major: savedProfile.major ?? "",
+      contact_email: savedProfile.contact_email ?? "",
+      phone: savedProfile.phone ?? "",
+      wechat_id: savedProfile.wechat_id ?? "",
     });
     await refreshUserWorkflows();
     setShowEditProfile(false);

@@ -268,6 +268,115 @@ $$;
 
 grant execute on function public.get_my_profile() to authenticated;
 
+create or replace function public.update_my_profile(
+  profile_display_name text,
+  profile_major text,
+  profile_contact_email text,
+  profile_phone text,
+  profile_wechat_id text
+)
+returns table (
+  id uuid,
+  display_name text,
+  school text,
+  major text,
+  contact_email text,
+  phone text,
+  wechat_id text,
+  avatar_initials text,
+  verified_uc_email boolean
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  requester uuid;
+  user_email text;
+  email_domain text;
+  profile_school text;
+begin
+  requester := auth.uid();
+
+  if requester is null then
+    raise exception 'Login required';
+  end if;
+
+  select email
+  into user_email
+  from auth.users
+  where auth.users.id = requester;
+
+  email_domain := split_part(coalesce(user_email, ''), '@', 2);
+  profile_school := case
+    when email_domain = 'ucsd.edu' then 'UCSD'
+    when email_domain = 'ucla.edu' then 'UCLA'
+    else 'UCB'
+  end;
+
+  update public.profiles
+  set
+    display_name = coalesce(nullif(trim(profile_display_name), ''), profiles.display_name),
+    major = nullif(trim(profile_major), ''),
+    contact_email = nullif(trim(profile_contact_email), ''),
+    phone = nullif(trim(profile_phone), ''),
+    wechat_id = nullif(trim(profile_wechat_id), ''),
+    updated_at = now()
+  where profiles.id = requester;
+
+  if not found then
+    insert into public.profiles (
+      id,
+      display_name,
+      school,
+      major,
+      contact_email,
+      phone,
+      wechat_id,
+      avatar_initials,
+      verified_uc_email
+    )
+    values (
+      requester,
+      coalesce(nullif(trim(profile_display_name), ''), split_part(coalesce(user_email, ''), '@', 1), 'UC Student'),
+      profile_school,
+      nullif(trim(profile_major), ''),
+      nullif(trim(profile_contact_email), ''),
+      nullif(trim(profile_phone), ''),
+      nullif(trim(profile_wechat_id), ''),
+      upper(left(coalesce(nullif(trim(profile_display_name), ''), user_email, 'UC'), 2)),
+      email_domain in (
+        'berkeley.edu',
+        'ucla.edu',
+        'ucsd.edu',
+        'ucsb.edu',
+        'uci.edu',
+        'ucdavis.edu',
+        'ucsc.edu',
+        'ucr.edu',
+        'ucmerced.edu'
+      )
+    );
+  end if;
+
+  return query
+  select
+    profiles.id,
+    profiles.display_name,
+    profiles.school,
+    profiles.major,
+    profiles.contact_email,
+    profiles.phone,
+    profiles.wechat_id,
+    profiles.avatar_initials,
+    profiles.verified_uc_email
+  from public.profiles
+  where profiles.id = requester;
+end;
+$$;
+
+grant execute on function public.update_my_profile(text, text, text, text, text) to authenticated;
+
 create or replace function public.get_matched_contact(target_profile_id uuid, target_task_id uuid)
 returns table (
   display_name text,
