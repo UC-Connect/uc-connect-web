@@ -30,141 +30,6 @@ type Task = {
   applicantCompletedAt: string | null;
 };
 
-const demoTasks: Task[] = [
-  {
-    id: "demo-1",
-    title: "帮忙实拍 Blackwell Hall 宿舍公共区域",
-    school: "UCB",
-    category: "校园实拍",
-    mode: "线下",
-    reward: "$25",
-    time: "12 分钟前",
-    createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-    applicants: 3,
-    author: "Mia Chen",
-    verified: true,
-    avatar: "MC",
-    description: "我是今年 Fall 入学的新生，想提前看看 Blackwell Hall 的公共厨房、洗衣房和一楼学习区。希望可以拍 8–10 张清晰照片，再简单说一下晚上是否吵。",
-    location: "UC Berkeley · Blackwell Hall",
-    due: "8 月 8 日前",
-    dueDate: null,
-    tone: "blue",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-  {
-    id: "demo-2",
-    title: "想咨询 Math-CS 转 Data Science 的选课规划",
-    school: "UCSD",
-    category: "经验咨询",
-    mode: "线上",
-    reward: "$18",
-    time: "28 分钟前",
-    createdAt: new Date(Date.now() - 28 * 60 * 1000).toISOString(),
-    applicants: 5,
-    author: "Eason L.",
-    verified: false,
-    avatar: "EL",
-    description: "目前是二年级 Math-CS，正在考虑转 Data Science。想找一位了解两个专业课程设置的学长学姐聊 30 分钟，主要讨论先修课、毕业时间和实习准备。",
-    location: "线上 · Zoom / 微信语音",
-    due: "本周内",
-    dueDate: null,
-    tone: "teal",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-  {
-    id: "demo-3",
-    title: "新生到校，求一起熟悉 Westwood 周边",
-    school: "UCLA",
-    category: "新生落地",
-    mode: "线下",
-    reward: "免费互助",
-    time: "1 小时前",
-    createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    applicants: 2,
-    author: "Sophie Wu",
-    verified: true,
-    avatar: "SW",
-    description: "刚到 UCLA，想找同学一起走一遍超市、公交站和常用餐厅。我也可以请你喝奶茶，希望大概一小时左右。",
-    location: "UCLA · Westwood",
-    due: "8 月 10 日",
-    dueDate: null,
-    tone: "gold",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-  {
-    id: "demo-4",
-    title: "借一个 TI-84 计算器参加周五考试",
-    school: "UCB",
-    category: "校园互助",
-    mode: "线下",
-    reward: "$10",
-    time: "2 小时前",
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    applicants: 1,
-    author: "Jason Y.",
-    verified: true,
-    avatar: "JY",
-    description: "计算器突然坏了，需要借用周五一天。可以在 Sather Gate 附近取还，会好好保管。",
-    location: "UC Berkeley · Sather Gate",
-    due: "本周五",
-    dueDate: null,
-    tone: "violet",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-  {
-    id: "demo-5",
-    title: "请分享一次 UCLA 校内研究申请经验",
-    school: "UCLA",
-    category: "经验咨询",
-    mode: "线上",
-    reward: "$20",
-    time: "今天 09:40",
-    createdAt: new Date().toISOString(),
-    applicants: 4,
-    author: "Lina Zhang",
-    verified: false,
-    avatar: "LZ",
-    description: "准备秋季申请校内 research，希望找成功加入 lab 的同学聊聊 cold email、简历和面试经验。",
-    location: "线上",
-    due: "下周前",
-    dueDate: null,
-    tone: "coral",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-  {
-    id: "demo-6",
-    title: "求帮忙确认 Sixth College 附近自行车停车位",
-    school: "UCSD",
-    category: "校园信息",
-    mode: "线下",
-    reward: "$12",
-    time: "今天 08:15",
-    createdAt: new Date().toISOString(),
-    applicants: 0,
-    author: "Kevin H.",
-    verified: true,
-    avatar: "KH",
-    description: "准备买自行车，想知道 Catalyst 附近晚上可用的停车架多不多，最好能拍两张照片。",
-    location: "UCSD · Sixth College",
-    due: "三天内",
-    dueDate: null,
-    tone: "teal",
-    status: "open",
-    authorCompletedAt: null,
-    applicantCompletedAt: null,
-  },
-];
-
 const categories = ["全部任务", "校园实拍", "新生落地", "经验咨询", "校园互助", "校园信息"];
 
 const textMap: Record<string, string> = {
@@ -210,6 +75,8 @@ const textMap: Record<string, string> = {
   "查看详情": "View Details",
   "暂时没有匹配的任务": "No matching tasks yet",
   "换个学校或关键词试试。": "Try another school or keyword.",
+  "暂无真实任务": "No real tasks yet",
+  "发布第一条需求后会显示在这里。": "The first posted request will appear here.",
   "三步，找到你的校园连接": "Three Steps to a Campus Connection",
   "发布一个需求": "Post a Request",
   "说清楚你需要什么、时间和地点。": "Describe what you need, when, and where.",
@@ -749,7 +616,7 @@ export default function Home() {
   const [school, setSchool] = useState("全部 UC");
   const [category, setCategory] = useState("全部任务");
   const [query, setQuery] = useState("");
-  const [tasks, setTasks] = useState<Task[]>(demoTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showApply, setShowApply] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -1894,13 +1761,14 @@ export default function Home() {
               </div>
               <div className="hero-board" aria-label="热门任务预览">
                 <div className="board-top"><span>{t("最新任务")}</span><span className="live-dot">{t("数据库同步")}</span></div>
-                {(featuredTasks.length ? featuredTasks : demoTasks.slice(0, 3)).map((task) => (
+                {featuredTasks.map((task) => (
                   <button className="feature-task" key={task.id} onClick={() => openTask(task)}>
                     <div className={`task-icon ${task.tone}`}>{task.mode === "线上" ? "◎" : "⌁"}</div>
                     <div><span className="mini-label">{task.school} · {tv(task.category)}</span><h3>{task.title}</h3><p>{tv(task.time)} · {task.applicants} {t("人申请")}</p></div>
                     <strong className={task.reward.includes("互助") ? "free" : ""}>{tv(task.reward)}</strong>
                   </button>
                 ))}
+                {featuredTasks.length === 0 && <div className="board-empty"><strong>{t("暂无真实任务")}</strong><p>{t("发布第一条需求后会显示在这里。")}</p></div>}
                 <div className="board-footer"><span></span><span>♡</span></div>
               </div>
             </div>

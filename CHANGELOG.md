@@ -39,6 +39,8 @@ UC Connect 的重要更新都会记录在这里。
   修正 UCLA 学校邮箱识别规则为 `@g.ucla.edu`，同时保持 UCB 使用 `@berkeley.edu`、UCSD 使用 `@ucsd.edu`。
 - Removed the misleading fallback that showed unknown email domains as UCB; unrecognized emails now display as unverified school accounts.
   移除未知邮箱默认显示为 UCB 的误导逻辑，非三种认证邮箱现在显示为暂未认证学校。
+- Removed legacy demo-task fallback data from the discover homepage so only real Supabase tasks are shown.
+  移除发现页旧的演示任务兜底数据，现在只展示 Supabase 中的真实任务。
 - Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
   优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
 - Separated login and sign-up paths and fixed invalid profile school metadata during registration.
