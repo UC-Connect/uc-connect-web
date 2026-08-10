@@ -29,6 +29,10 @@ UC Connect 的重要更新都会记录在这里。
   修复联系方式下次登录丢失的问题，资料编辑改为通过专门的 Supabase RPC 保存，不再使用宽泛的 profile upsert。
 - Added post-save profile verification so the UI only reports success after Supabase returns the saved contact fields.
   新增资料保存后的数据库回读校验，只有 Supabase 返回已保存的联系方式后才提示保存成功。
+- Hardened profile saving with an upsert-based Supabase RPC to handle existing and missing profile rows consistently.
+  将资料保存 RPC 改为基于 upsert 的写入方式，统一处理已有资料行和缺失资料行。
+- Fixed an ambiguous `id` reference in the profile-save RPC by targeting the `profiles_pkey` constraint explicitly.
+  修复资料保存 RPC 中 `id` 字段引用不明确的问题，改为显式使用 `profiles_pkey` 约束处理冲突。
 - Improved login / sign-up error handling so existing accounts no longer show a raw `user already exists` error.
   优化登录 / 注册错误处理，已存在账号不再直接显示原始的 `user already exists` 错误。
 - Separated login and sign-up paths and fixed invalid profile school metadata during registration.

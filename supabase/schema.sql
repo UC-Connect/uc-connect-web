@@ -314,50 +314,46 @@ begin
     else 'UCB'
   end;
 
-  update public.profiles
-  set
-    display_name = coalesce(nullif(trim(profile_display_name), ''), profiles.display_name),
-    major = nullif(trim(profile_major), ''),
-    contact_email = nullif(trim(profile_contact_email), ''),
-    phone = nullif(trim(profile_phone), ''),
-    wechat_id = nullif(trim(profile_wechat_id), ''),
-    updated_at = now()
-  where profiles.id = requester;
-
-  if not found then
-    insert into public.profiles (
-      id,
-      display_name,
-      school,
-      major,
-      contact_email,
-      phone,
-      wechat_id,
-      avatar_initials,
-      verified_uc_email
+  insert into public.profiles (
+    id,
+    display_name,
+    school,
+    major,
+    contact_email,
+    phone,
+    wechat_id,
+    avatar_initials,
+    verified_uc_email
+  )
+  values (
+    requester,
+    coalesce(nullif(trim(profile_display_name), ''), split_part(coalesce(user_email, ''), '@', 1), 'UC Student'),
+    profile_school,
+    nullif(trim(profile_major), ''),
+    nullif(trim(profile_contact_email), ''),
+    nullif(trim(profile_phone), ''),
+    nullif(trim(profile_wechat_id), ''),
+    upper(left(coalesce(nullif(trim(profile_display_name), ''), user_email, 'UC'), 2)),
+    email_domain in (
+      'berkeley.edu',
+      'ucla.edu',
+      'ucsd.edu',
+      'ucsb.edu',
+      'uci.edu',
+      'ucdavis.edu',
+      'ucsc.edu',
+      'ucr.edu',
+      'ucmerced.edu'
     )
-    values (
-      requester,
-      coalesce(nullif(trim(profile_display_name), ''), split_part(coalesce(user_email, ''), '@', 1), 'UC Student'),
-      profile_school,
-      nullif(trim(profile_major), ''),
-      nullif(trim(profile_contact_email), ''),
-      nullif(trim(profile_phone), ''),
-      nullif(trim(profile_wechat_id), ''),
-      upper(left(coalesce(nullif(trim(profile_display_name), ''), user_email, 'UC'), 2)),
-      email_domain in (
-        'berkeley.edu',
-        'ucla.edu',
-        'ucsd.edu',
-        'ucsb.edu',
-        'uci.edu',
-        'ucdavis.edu',
-        'ucsc.edu',
-        'ucr.edu',
-        'ucmerced.edu'
-      )
-    );
-  end if;
+  )
+  on conflict on constraint profiles_pkey do update
+  set
+    display_name = excluded.display_name,
+    major = excluded.major,
+    contact_email = excluded.contact_email,
+    phone = excluded.phone,
+    wechat_id = excluded.wechat_id,
+    updated_at = now();
 
   return query
   select
