@@ -15,6 +15,8 @@ UC Connect 的重要更新都会记录在这里。
   在任务详情页新增任务进度时间线。
 
 ### Changed / 调整
+- Refined the front-end visual style by reducing hero typography, simplifying hero copy, tightening rounded corners, and replacing heavy gradients/shadows with a calmer product UI.
+  优化前端视觉风格：缩小首屏标题、精简首屏文案、收紧圆角，并将厚重渐变和阴影改为更克制的产品界面。
 - Updated README documentation to reflect the current Supabase-backed MVP, deployment setup, school email rules, and remaining limitations.
   更新 README 文档，使其同步当前 Supabase MVP、部署配置、学校邮箱规则和剩余限制。
 - Kept legacy `?task=` links compatible while moving new task links to `/tasks/[id]`.

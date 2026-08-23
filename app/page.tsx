@@ -51,6 +51,9 @@ const textMap: Record<string, string> = {
   "完成次数": "Completed",
   "平均评分": "Average Rating",
   "联系方式仅在任务匹配后展示。": "Contact info is shown only after a task match.",
+  "校园需求，": "Campus requests",
+  "找到回应。": "get answered.",
+  "发布需求、申请帮助、匹配后联系对方。": "Post requests, apply to help, and contact each other after matching.",
   "让每一个需求，": "Let every request",
   "找到对的人回应。": "reach the right person.",
   "连接 UC 校园里的同学，发布需求、分享经验、互相帮忙。简单一点，真诚一点。": "Connect with students across UC campuses to post requests, share experience, and help each other.",
@@ -1752,8 +1755,8 @@ export default function Home() {
           <section className="hero">
             <div className="hero-grid">
               <div className="hero-copy">
-                <h1>{t("让每一个需求，")}<br /><em>{t("找到对的人回应。")}</em></h1>
-                <p>{t("连接 UC 校园里的同学，发布需求、分享经验、互相帮忙。简单一点，真诚一点。")}</p>
+                <h1>{t("校园需求，")}<br /><em>{t("找到回应。")}</em></h1>
+                <p>{t("发布需求、申请帮助、匹配后联系对方。")}</p>
                 <div className="hero-actions">
                   <button className="primary-button" onClick={() => document.getElementById("task-list")?.scrollIntoView({ behavior: "smooth" })}>{t("浏览附近任务")} <span>→</span></button>
                   <button className="text-button" onClick={() => requireAuth(() => navigate("publish"), "请先登录后再发布需求")}>{t("我有一个需求")}</button>
