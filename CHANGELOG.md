@@ -15,6 +15,8 @@ UC Connect 的重要更新都会记录在这里。
   在任务详情页新增任务进度时间线。
 
 ### Changed / 调整
+- Updated README documentation to reflect the current Supabase-backed MVP, deployment setup, school email rules, and remaining limitations.
+  更新 README 文档，使其同步当前 Supabase MVP、部署配置、学校邮箱规则和剩余限制。
 - Kept legacy `?task=` links compatible while moving new task links to `/tasks/[id]`.
   在新链接改为 `/tasks/[id]` 的同时，继续兼容旧的 `?task=` 链接。
 
