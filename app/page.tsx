@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { User } from "@supabase/supabase-js";
 import { ApplicationRow, NotificationRow, ReviewRow, supabase, TaskRow } from "@/lib/supabase";
 
@@ -38,6 +39,10 @@ const textMap: Record<string, string> = {
   "我的任务": "My Tasks",
   "我的": "Me",
   "消息": "Messages",
+  "申请信息": "Admissions",
+  "UC 申请信息中心": "UC admissions guide",
+  "高中生和转学生的 A-G、GPA、TAG、截止日期一处查清，还能问 AI 助手。": "A-G, GPA, TAG, and deadlines for first-year and transfer applicants in one place, plus an AI assistant.",
+  "去看看": "Explore",
   "请先登录后查看我的任务": "Please log in to view your tasks",
   "请先登录后查看消息": "Please log in to view messages",
   "请先登录后再发布需求": "Please log in before posting a request",
@@ -1740,6 +1745,7 @@ export default function Home() {
             <button className={view === "home" ? "nav-active" : ""} onClick={() => navigate("home")}>{t("发现任务")}</button>
             <button className={view === "mine" ? "nav-active" : ""} onClick={() => requireAuth(() => navigate("mine"), "请先登录后查看我的任务")}>{t("我的任务")}</button>
             <button className="message-nav-button" onClick={() => requireAuth(() => navigate("messages"), "请先登录后查看消息")}>{t("消息")}{unreadNotifications > 0 && <b>{unreadNotifications}</b>}</button>
+            <Link href="/admissions">{t("申请信息")}</Link>
           </nav>
           <div className="header-actions">
             <button className="lang-toggle" onClick={() => setLanguage(language === "zh" ? "en" : "zh")}>{language === "zh" ? "中文 / EN" : "EN / 中文"}</button>
@@ -1775,6 +1781,14 @@ export default function Home() {
                 <div className="board-footer"><span></span><span>♡</span></div>
               </div>
             </div>
+          </section>
+
+          <section className="admissions-banner">
+            <div>
+              <strong>{t("UC 申请信息中心")}</strong>
+              <span>{t("高中生和转学生的 A-G、GPA、TAG、截止日期一处查清，还能问 AI 助手。")}</span>
+            </div>
+            <Link href="/admissions" className="primary-button small">{t("去看看")} →</Link>
           </section>
 
           <section className="task-section" id="task-list">

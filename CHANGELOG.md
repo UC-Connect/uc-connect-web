@@ -4,6 +4,22 @@ All notable updates to UC Connect are recorded here.
 
 UC Connect 的重要更新都会记录在这里。
 
+## Unreleased - 2026-10-13
+
+### Added / 新增
+- Added the UC admissions guide at `/admissions`: first-year and transfer views, a fall 2027 key-dates timeline with open/next status, core-requirement highlights, and 20 topic pages summarized from official UC sources.
+  新增 UC 申请信息中心 `/admissions`：区分高中生与转学生，提供 2027 秋季关键日期时间线（标注进行中 / 下一个节点）、核心要求速览，以及 20 个整理自 UC 官网的专题页。
+- Added topic detail pages at `/admissions/[slug]` with source links, review dates, and related topics.
+  新增专题详情页 `/admissions/[slug]`，显示官方来源、核对日期和相关专题。
+- Added the admissions AI assistant at `/admissions/ask` with streaming answers, inline numbered citations, source cards, applicant-type selection, follow-up questions, and Chinese/English replies.
+  新增申请 AI 助手 `/admissions/ask`：流式输出、行内编号引用、来源卡片、申请类型选择、支持追问，并按提问语言用中文或英文回答。
+- Added the `/api/admissions/chat` streaming API (Gemini) with keyword retrieval, Chinese-to-English query terms, applicant-type filtering, and per-instance rate limiting.
+  新增 `/api/admissions/chat` 流式接口（Gemini），包含关键词检索、中文提问词映射、申请类型过滤和单实例限流。
+- Added retrieval and answer evaluation scripts (`npm run eval:retrieval`, `npm run eval:agent`) with 51 test questions, including Chinese questions.
+  新增检索与回答评测脚本（`npm run eval:retrieval`、`npm run eval:agent`），共 51 道测试题，含中文问题。
+- Added an admissions entry to the homepage and desktop navigation.
+  在首页和桌面导航中新增申请信息入口。
+
 ## v0.2.1 - 2026-08-08
 
 ### Added / 新增
