@@ -153,3 +153,12 @@ body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "P
 @media (max-width:640px){.page-reminder{grid-template-columns:1fr}.page-reminder button{grid-row:auto;grid-column:auto;width:100%}.task-timeline{padding:15px}.timeline-step{grid-template-columns:26px 1fr}.timeline-step i{width:26px;height:26px}.timeline-step:not(:last-child):after{left:12px}}
 
 @media (max-width:640px){.hero-grid{padding:38px 19px 46px}.hero h1{font-size:32px;letter-spacing:0}.hero-copy>p{font-size:14px;line-height:1.6}.hero-board{border-radius:10px}.primary-button{min-height:42px}.task-card{min-height:270px}}
+.desktop-nav a { padding:26px 0 22px; color:#637083; font-size:14px; text-decoration:none; border-bottom:3px solid transparent; }
+.desktop-nav a:hover { color:var(--blue); }
+.admissions-banner { max-width:1180px; margin:28px auto 0; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; background:#fff; border:1px solid #e0e6ed; border-left:3px solid var(--gold); border-radius:8px; }
+.admissions-banner div { display:flex; flex-direction:column; gap:3px; }
+.admissions-banner strong { color:var(--navy); font-size:15px; }
+.admissions-banner span { color:var(--muted); font-size:13px; line-height:1.5; }
+.admissions-banner .primary-button { text-decoration:none; white-space:nowrap; flex:none; }
+@media (max-width:1228px){.admissions-banner{margin:24px 24px 0}}
+@media (max-width:640px){.admissions-banner{margin:20px 16px 0;flex-direction:column;align-items:stretch}}
