@@ -88,6 +88,28 @@ The schema file includes tables, RLS policies, triggers, RPC functions, notifica
 3. Push to the `main` branch to trigger a production deployment.
 4. After changing environment variables, redeploy the latest deployment.
 
+## Admissions Guide and AI Assistant
+
+`/admissions` summarizes UC first-year and transfer admission requirements from official UC pages. Each topic is a Markdown file in `content/admissions/docs/` with its source URL, applicable cycle, and last-reviewed date in frontmatter. The same files power the topic pages and the AI assistant at `/admissions/ask`.
+
+The assistant retrieves relevant sections with keyword scoring (with Chinese query terms mapped to English and an applicant-type filter), sends them to Gemini, and streams an answer that cites sources by number. It is instructed not to predict admission chances, guarantee eligibility, or invent course articulation.
+
+Environment variables (server-only):
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-flash-lite-latest
+```
+
+Evaluation:
+
+```bash
+npm run eval:retrieval   # offline: checks that expected sources are retrieved
+npm run eval:agent       # calls Gemini for every test question; paced for the free tier
+```
+
+Yearly maintenance: update the two dates documents (`freshman-dates-and-deadlines.md`, `uc-dates-and-deadlines.md`), bump `last_reviewed` on any re-checked topic, and update `lib/admissions/presentation.ts` highlights if a requirement changes.
+
 ## Main Workflows
 
 - Publish a task: logged-in users create a task that is saved to Supabase.
@@ -112,6 +134,11 @@ The schema file includes tables, RLS policies, triggers, RPC functions, notifica
 
 ```text
 app/page.tsx             Main product UI and client workflow logic
+app/admissions/          UC admissions guide, topic pages, and AI assistant UI
+app/api/admissions/chat  Streaming admissions assistant API
+lib/admissions/          Knowledge-base loader, retriever, Gemini client, rate limiter
+content/admissions/      Admissions knowledge base (Markdown), system prompt, eval questions
+scripts/admissions/      Retrieval and answer evaluation scripts
 app/tasks/[id]/page.tsx  Shareable task detail route
 app/globals.css          App styling
 lib/supabase.ts          Supabase client and shared types

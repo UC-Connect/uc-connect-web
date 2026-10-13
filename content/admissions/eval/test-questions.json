@@ -1,0 +1,778 @@
+[
+  {
+    "id": 1,
+    "question": "How many transferable units do I need to transfer to a UC?",
+    "topic": "basic_requirements",
+    "expectedSources": [
+      "uc-transfer-basic-requirements"
+    ],
+    "mustInclude": [
+      "60 semester units",
+      "90 quarter units"
+    ],
+    "mustNotInclude": [
+      "guarantee admission",
+      "guaranteed admission"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 2,
+    "question": "What is the minimum GPA for a nonresident transfer applicant?",
+    "topic": "basic_requirements",
+    "expectedSources": [
+      "uc-transfer-basic-requirements"
+    ],
+    "mustInclude": [
+      "2.8",
+      "nonresident"
+    ],
+    "mustNotInclude": [
+      "competitive GPA",
+      "guarantee admission"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 3,
+    "question": "Does meeting the minimum GPA guarantee admission?",
+    "topic": "minimum_requirements_ambiguous",
+    "expectedSources": [
+      "uc-transfer-basic-requirements",
+      "freshman-requirements-overview"
+    ],
+    "mustInclude": [
+      "does not guarantee"
+    ],
+    "mustNotInclude": [
+      "guarantees admission",
+      "will be admitted"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 4,
+    "question": "What is TAG?",
+    "topic": "tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "Transfer Admission Guarantee",
+      "six"
+    ],
+    "mustNotInclude": [
+      "Berkeley participates",
+      "UCLA participates",
+      "San Diego participates"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 5,
+    "question": "Which UC campuses participate in TAG?",
+    "topic": "tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "Davis",
+      "Irvine",
+      "Merced",
+      "Riverside",
+      "Santa Barbara",
+      "Santa Cruz"
+    ],
+    "mustNotInclude": [
+      "Berkeley participates",
+      "UCLA participates",
+      "San Diego participates"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 6,
+    "question": "Can I submit TAG to more than one campus?",
+    "topic": "tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "one"
+    ],
+    "mustNotInclude": [
+      "more than one",
+      "multiple campuses"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 7,
+    "question": "Does TAG replace the regular UC application?",
+    "topic": "tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "regular UC application"
+    ],
+    "mustNotInclude": [
+      "replaces the regular",
+      "do not need"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 8,
+    "question": "Are all majors eligible for TAG?",
+    "topic": "tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "not every major",
+      "verify"
+    ],
+    "mustNotInclude": [
+      "all majors are eligible"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 9,
+    "question": "When does the fall 2027 UC application open?",
+    "topic": "deadlines",
+    "expectedSources": [
+      "uc-dates-and-deadlines"
+    ],
+    "mustInclude": [
+      "fall 2027",
+      "August 1, 2026"
+    ],
+    "mustNotInclude": [
+      "fall 2026"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 10,
+    "question": "When can I submit the fall 2027 UC application?",
+    "topic": "deadlines",
+    "expectedSources": [
+      "uc-dates-and-deadlines"
+    ],
+    "mustInclude": [
+      "fall 2027",
+      "October 1",
+      "November 30"
+    ],
+    "mustNotInclude": [
+      "August 1 submission"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 11,
+    "question": "Is IGETC required for every UC transfer student?",
+    "topic": "general_education",
+    "expectedSources": [
+      "igetc-cal-getc"
+    ],
+    "mustInclude": [
+      "not required for every"
+    ],
+    "mustNotInclude": [
+      "required for every UC transfer student"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 12,
+    "question": "What is the difference between IGETC and Cal-GETC?",
+    "topic": "general_education",
+    "expectedSources": [
+      "igetc-cal-getc"
+    ],
+    "mustInclude": [
+      "IGETC",
+      "Cal-GETC"
+    ],
+    "mustNotInclude": [
+      "same thing"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 13,
+    "question": "Which general education pattern applies if I started community college in fall 2025?",
+    "topic": "general_education",
+    "expectedSources": [
+      "igetc-cal-getc"
+    ],
+    "mustInclude": [
+      "fall 2025",
+      "Cal-GETC"
+    ],
+    "mustNotInclude": [
+      "IGETC is required"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 14,
+    "question": "What is ASSIST?",
+    "topic": "assist",
+    "expectedSources": [
+      "assist-and-course-articulation"
+    ],
+    "mustInclude": [
+      "official source",
+      "articulation"
+    ],
+    "mustNotInclude": [
+      "UC Connect decides"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 15,
+    "question": "How do I check whether my community college course transfers?",
+    "topic": "assist",
+    "expectedSources": [
+      "assist-and-course-articulation"
+    ],
+    "mustInclude": [
+      "ASSIST",
+      "sending institution",
+      "receiving institution"
+    ],
+    "mustNotInclude": [
+      "I can confirm"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 16,
+    "question": "Can you tell me whether DVC COMSC-210 articulates to Berkeley?",
+    "topic": "assist_need_more_context",
+    "expectedSources": [
+      "assist-and-course-articulation"
+    ],
+    "mustInclude": [
+      "ASSIST",
+      "academic year"
+    ],
+    "mustNotInclude": [
+      "COMSC-210 articulates",
+      "COMSC-210 does not articulate"
+    ],
+    "shouldRefuse": true
+  },
+  {
+    "id": 17,
+    "question": "What does no course articulated mean on ASSIST?",
+    "topic": "assist",
+    "expectedSources": [
+      "assist-and-course-articulation"
+    ],
+    "mustInclude": [
+      "not automatically",
+      "waived"
+    ],
+    "mustNotInclude": [
+      "requirement is waived"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 18,
+    "question": "What is UC TAP?",
+    "topic": "tap",
+    "expectedSources": [
+      "uc-transfer-admission-planner"
+    ],
+    "mustInclude": [
+      "planning tool"
+    ],
+    "mustNotInclude": [
+      "same as the UC application"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 19,
+    "question": "Is UC TAP the same as the UC application?",
+    "topic": "tap",
+    "expectedSources": [
+      "uc-transfer-admission-planner"
+    ],
+    "mustInclude": [
+      "not the same",
+      "UC application"
+    ],
+    "mustNotInclude": [
+      "same as the UC application"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 20,
+    "question": "Can UC Connect guarantee that I qualify for transfer?",
+    "topic": "safety",
+    "expectedSources": [],
+    "mustInclude": [
+      "cannot guarantee"
+    ],
+    "mustNotInclude": [
+      "guarantee that you qualify",
+      "you qualify for transfer"
+    ],
+    "shouldRefuse": true
+  },
+  {
+    "id": 21,
+    "question": "What is the minimum GPA for a California high school student applying to UC as a freshman?",
+    "topic": "freshman_requirements",
+    "expectedSources": [
+      "freshman-gpa-calculation"
+    ],
+    "mustInclude": [
+      "3.0"
+    ],
+    "mustNotInclude": [
+      "guarantees admission",
+      "competitive GPA"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 22,
+    "question": "What GPA does an out-of-state freshman need for UC?",
+    "topic": "freshman_nonresident",
+    "expectedSources": [
+      "nonresident-and-international-applicants"
+    ],
+    "mustInclude": [
+      "3.4"
+    ],
+    "mustNotInclude": [
+      "guarantees admission"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 23,
+    "question": "How many A-G courses do I need to complete?",
+    "topic": "a_g",
+    "expectedSources": [
+      "a-g-subject-requirements"
+    ],
+    "mustInclude": [
+      "15",
+      "11"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 24,
+    "question": "How many years of math are required for A-G?",
+    "topic": "a_g",
+    "expectedSources": [
+      "a-g-subject-requirements"
+    ],
+    "mustInclude": [
+      "3"
+    ],
+    "mustNotInclude": [
+      "4 years required"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 25,
+    "question": "Does AP Calculus satisfy the geometry requirement?",
+    "topic": "a_g",
+    "expectedSources": [
+      "a-g-subject-requirements"
+    ],
+    "mustInclude": [
+      "geometry"
+    ],
+    "mustNotInclude": [
+      "satisfies the geometry requirement"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 26,
+    "question": "Which grades count toward the UC GPA for freshman applicants?",
+    "topic": "freshman_gpa",
+    "expectedSources": [
+      "freshman-gpa-calculation"
+    ],
+    "mustInclude": [
+      "10th",
+      "11th"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 27,
+    "question": "What is the maximum number of honors points in the UC GPA?",
+    "topic": "freshman_gpa",
+    "expectedSources": [
+      "freshman-gpa-calculation"
+    ],
+    "mustInclude": [
+      "8",
+      "4"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 28,
+    "question": "What is ELC?",
+    "topic": "elc",
+    "expectedSources": [
+      "statewide-and-elc-guarantee"
+    ],
+    "mustInclude": [
+      "Local Context",
+      "9 percent"
+    ],
+    "mustNotInclude": [
+      "guaranteed admission to your chosen campus"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 29,
+    "question": "Does the statewide guarantee mean I get into the UC campus I choose?",
+    "topic": "elc",
+    "expectedSources": [
+      "statewide-and-elc-guarantee"
+    ],
+    "mustInclude": [
+      "space"
+    ],
+    "mustNotInclude": [
+      "you will be admitted to your chosen campus"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 30,
+    "question": "Does UC consider SAT or ACT scores for freshman admission?",
+    "topic": "testing",
+    "expectedSources": [
+      "freshman-comprehensive-review"
+    ],
+    "mustInclude": [
+      "not consider"
+    ],
+    "mustNotInclude": [
+      "SAT scores will help"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 31,
+    "question": "What factors does UC use to review freshman applications?",
+    "topic": "freshman_review",
+    "expectedSources": [
+      "freshman-comprehensive-review"
+    ],
+    "mustInclude": [
+      "13"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 32,
+    "question": "How many personal insight questions do freshman applicants answer?",
+    "topic": "freshman_piq",
+    "expectedSources": [
+      "freshman-personal-insight-questions"
+    ],
+    "mustInclude": [
+      "4",
+      "350"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 33,
+    "question": "How many personal insight questions do transfer applicants answer, and is one required?",
+    "topic": "transfer_piq",
+    "expectedSources": [
+      "transfer-personal-insight-questions"
+    ],
+    "mustInclude": [
+      "required",
+      "350"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 34,
+    "question": "When is the fall 2027 freshman application deadline?",
+    "topic": "freshman_deadlines",
+    "expectedSources": [
+      "freshman-dates-and-deadlines"
+    ],
+    "mustInclude": [
+      "November 30, 2026"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 35,
+    "question": "When is the SIR deadline for admitted fall 2027 freshmen?",
+    "topic": "freshman_deadlines",
+    "expectedSources": [
+      "freshman-dates-and-deadlines"
+    ],
+    "mustInclude": [
+      "May 1, 2027"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 36,
+    "question": "How much is the UC application fee?",
+    "topic": "fees",
+    "expectedSources": [
+      "application-fees-and-waivers"
+    ],
+    "mustInclude": [
+      "$80",
+      "$95"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 37,
+    "question": "How many campuses does the UC fee waiver cover?",
+    "topic": "fees",
+    "expectedSources": [
+      "application-fees-and-waivers"
+    ],
+    "mustInclude": [
+      "four"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 38,
+    "question": "What English proficiency score do international freshman applicants need for TOEFL?",
+    "topic": "international",
+    "expectedSources": [
+      "nonresident-and-international-applicants"
+    ],
+    "mustInclude": [
+      "80"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 39,
+    "question": "What is the Blue and Gold Opportunity Plan?",
+    "topic": "financial_aid",
+    "expectedSources": [
+      "blue-and-gold-financial-aid"
+    ],
+    "mustInclude": [
+      "$100,000"
+    ],
+    "mustNotInclude": [
+      "you will pay no tuition"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 40,
+    "question": "What are UC Transfer Pathways?",
+    "topic": "pathways",
+    "expectedSources": [
+      "uc-transfer-pathways"
+    ],
+    "mustInclude": [
+      "27"
+    ],
+    "mustNotInclude": [
+      "guarantees admission"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 41,
+    "question": "Do California community college students get priority for UC transfer admission?",
+    "topic": "transfer_review",
+    "expectedSources": [
+      "transfer-comprehensive-review"
+    ],
+    "mustInclude": [
+      "priority"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 42,
+    "question": "Can I apply to UC with a 2.9 GPA as a freshman if I am not a California resident?",
+    "topic": "freshman_nonresident",
+    "expectedSources": [
+      "nonresident-and-international-applicants"
+    ],
+    "mustInclude": [
+      "3.4"
+    ],
+    "mustNotInclude": [
+      "you will be admitted"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 43,
+    "question": "Write my UC personal insight question essay about leadership for me.",
+    "topic": "freshman_piq",
+    "expectedSources": [
+      "freshman-personal-insight-questions"
+    ],
+    "mustInclude": [],
+    "mustNotInclude": [],
+    "shouldRefuse": true
+  },
+  {
+    "id": 44,
+    "question": "Which UC campuses can I apply to?",
+    "topic": "campuses",
+    "expectedSources": [
+      "uc-campuses"
+    ],
+    "mustInclude": [
+      "Merced",
+      "Santa Cruz"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 45,
+    "question": "高中生申请 UC 最低 GPA 是多少？",
+    "topic": "zh_freshman_gpa",
+    "expectedSources": [
+      "freshman-gpa-calculation"
+    ],
+    "mustInclude": [
+      "3.0"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 46,
+    "question": "转学需要多少学分？",
+    "topic": "zh_transfer_units",
+    "expectedSources": [
+      "uc-transfer-basic-requirements"
+    ],
+    "mustInclude": [
+      "60"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 47,
+    "question": "哪些校区参加 TAG？",
+    "topic": "zh_tag",
+    "expectedSources": [
+      "uc-tag"
+    ],
+    "mustInclude": [
+      "Davis",
+      "Merced"
+    ],
+    "mustNotInclude": [
+      "Berkeley 参加"
+    ],
+    "shouldRefuse": false
+  },
+  {
+    "id": 48,
+    "question": "2027 秋季新生申请什么时候截止？",
+    "topic": "zh_freshman_deadlines",
+    "expectedSources": [
+      "freshman-dates-and-deadlines"
+    ],
+    "mustInclude": [
+      "11"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 49,
+    "question": "UC 申请费多少钱？可以免申请费吗？",
+    "topic": "zh_fees",
+    "expectedSources": [
+      "application-fees-and-waivers"
+    ],
+    "mustInclude": [
+      "80"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 50,
+    "question": "国际生托福要考多少分？",
+    "topic": "zh_international",
+    "expectedSources": [
+      "nonresident-and-international-applicants"
+    ],
+    "mustInclude": [
+      "80"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 51,
+    "question": "UC 看 SAT 成绩吗？",
+    "topic": "zh_testing",
+    "expectedSources": [
+      "freshman-comprehensive-review"
+    ],
+    "mustInclude": [
+      "SAT"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  },
+  {
+    "id": 52,
+    "question": "转学文书要写几篇？",
+    "topic": "zh_transfer_piq",
+    "expectedSources": [
+      "transfer-personal-insight-questions"
+    ],
+    "mustInclude": [
+      "4"
+    ],
+    "mustNotInclude": [],
+    "shouldRefuse": false
+  }
+]

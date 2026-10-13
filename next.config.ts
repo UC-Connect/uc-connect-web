@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // The admissions knowledge base is read from disk at request time by the chat API.
+  outputFileTracingIncludes: {
+    "/api/admissions/chat": ["./content/admissions/**/*"],
+  },
 };
 
 export default nextConfig;
