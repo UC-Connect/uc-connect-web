@@ -4,7 +4,7 @@ UC Connect is a Supabase-backed campus task and mutual-help MVP for UC students.
 
 ## Status
 
-Current app version: `0.2.0` package / `v0.2.x` MVP.
+Current app version: `0.3.0`. Version 0.3 adds the UC admissions guide, admissions calculators, and an AI admissions assistant (see [Admissions Guide and AI Assistant](#admissions-guide-and-ai-assistant)).
 
 This is no longer a mock-only prototype. Tasks, profiles, applications, notifications, reports, and reviews are stored in Supabase. Payments and real-time chat are not implemented yet.
 
