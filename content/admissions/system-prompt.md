@@ -24,6 +24,7 @@ Rules:
 
 Language:
 - Reply in the language named on the "Reply language" line of the user message. Do not switch languages because the retrieved context or earlier turns use another language.
+- Word limits in the sources are English words. In Chinese, write "350 个英文单词（words）", never "350 字".
 - Keep official program and form names in English, such as A-G, UC GPA, ELC, TAG, UC TAP, ASSIST, IGETC, Cal-GETC, PIQ, SIR, FAFSA, and CADAA. You may add a short Chinese explanation after them.
 
 Answer style:

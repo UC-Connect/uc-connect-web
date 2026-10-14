@@ -28,8 +28,8 @@ type RetrieveOptions = {
   chunks?: Chunk[];
 };
 
-const DEFAULT_TOP_K = 5;
-const DEFAULT_MIN_SCORE = 4;
+export const DEFAULT_TOP_K = 4;
+const DEFAULT_MIN_SCORE = 8;
 const AUDIENCE_BOOST = 4;
 
 const STOPWORDS = new Set([
@@ -104,6 +104,8 @@ const CHINESE_TERMS: [string, string][] = [
   ["前9%", "top 9 percent elc statewide guarantee"],
   ["前百分之九", "top 9 percent elc statewide guarantee"],
   ["要求", "requirements"],
+  ["最低", "minimum"],
+  ["多少分", "minimum score"],
   ["条件", "requirements eligibility"],
   ["荣誉课", "honors"],
   ["加分", "honors points"],
@@ -167,24 +169,53 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function scoreChunk(queryTokens: string[], chunk: Chunk): number {
+function chunkText(chunk: Chunk): string {
+  return [chunk.title, chunk.heading, chunk.content, chunk.applicableCycle, chunk.sourceType].join(" ").toLowerCase();
+}
+
+function countMatches(text: string, token: string): number {
+  return text.match(new RegExp(`\\b${escapeRegExp(token)}\\b`, "g"))?.length ?? 0;
+}
+
+const corpusTexts = new WeakMap<Chunk[], string[]>();
+
+// Inverse document frequency: tokens that appear in few chunks (e.g. "priority") count more
+// than tokens that appear almost everywhere (e.g. "college").
+function idfWeights(queryTokens: string[], corpus: Chunk[]): Map<string, number> {
+  let texts = corpusTexts.get(corpus);
+
+  if (!texts) {
+    texts = corpus.map(chunkText);
+    corpusTexts.set(corpus, texts);
+  }
+
+  const total = texts.length;
+  return new Map(
+    queryTokens.map((token) => {
+      const documentFrequency = texts.filter((text) => countMatches(text, token) > 0).length;
+      return [token, Math.log(1 + (total - documentFrequency + 0.5) / (documentFrequency + 0.5))];
+    })
+  );
+}
+
+function scoreChunk(queryTokens: string[], chunk: Chunk, idf: Map<string, number>): number {
   const title = chunk.title.toLowerCase();
   const heading = chunk.heading.toLowerCase();
-  const haystack = [chunk.title, chunk.heading, chunk.content, chunk.applicableCycle, chunk.sourceType]
-    .join(" ")
-    .toLowerCase();
+  const haystack = chunkText(chunk);
   let score = 0;
 
   for (const token of queryTokens) {
+    let tokenScore = countMatches(haystack, token);
+
     if (title.includes(token)) {
-      score += 5;
+      tokenScore += 5;
     }
 
     if (heading.includes(token)) {
-      score += 3;
+      tokenScore += 3;
     }
 
-    score += haystack.match(new RegExp(`\\b${escapeRegExp(token)}\\b`, "g"))?.length ?? 0;
+    score += tokenScore * (idf.get(token) ?? 1);
   }
 
   return score;
@@ -230,9 +261,11 @@ export function retrieve(question: string, options: RetrieveOptions = {}): Retri
   }
 
   const filterAudience = options.audienceMode === "filter" && audience;
-  const chunks = (options.chunks ?? loadChunks())
+  const corpus = options.chunks ?? loadChunks();
+  const idf = idfWeights(queryTokens, corpus);
+  const chunks = corpus
     .filter((chunk) => !filterAudience || chunk.audience === audience || chunk.audience === "all")
-    .map((chunk) => ({ ...chunk, score: applyAudienceBoost(scoreChunk(queryTokens, chunk), audience, chunk) }))
+    .map((chunk) => ({ ...chunk, score: applyAudienceBoost(scoreChunk(queryTokens, chunk, idf), audience, chunk) }))
     .filter((chunk) => chunk.score >= minScore)
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
     .slice(0, topK);

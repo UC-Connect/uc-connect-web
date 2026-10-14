@@ -838,3 +838,83 @@ create policy "Users can mark their own notifications read"
 on public.notifications for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- Admissions assistant: answer cache and shared rate limits.
+-- Only the server (service role key) reads or writes these; anon and authenticated users have no access.
+create table if not exists public.admissions_answer_cache (
+  cache_key text primary key,
+  question text not null,
+  audience text,
+  kb_version text not null,
+  answer text not null,
+  sources jsonb not null default '[]'::jsonb,
+  model text,
+  hit_count integer not null default 0,
+  created_at timestamptz not null default now(),
+  last_hit_at timestamptz
+);
+
+create table if not exists public.admissions_rate_limits (
+  bucket text not null,
+  window_start timestamptz not null,
+  request_count integer not null default 0,
+  primary key (bucket, window_start)
+);
+
+alter table public.admissions_answer_cache enable row level security;
+alter table public.admissions_rate_limits enable row level security;
+revoke all on public.admissions_answer_cache from anon, authenticated;
+revoke all on public.admissions_rate_limits from anon, authenticated;
+
+-- Counts one request against each fixed-window bucket and returns the first bucket over its limit, or null.
+create or replace function public.admissions_consume_quota(p_buckets text[], p_window_seconds integer[], p_limits integer[])
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_index integer;
+  v_window timestamptz;
+  v_count integer;
+  v_exceeded text;
+begin
+  for v_index in 1 .. coalesce(array_length(p_buckets, 1), 0) loop
+    v_window := to_timestamp(floor(extract(epoch from now()) / p_window_seconds[v_index]) * p_window_seconds[v_index]);
+
+    insert into public.admissions_rate_limits (bucket, window_start, request_count)
+    values (p_buckets[v_index], v_window, 1)
+    on conflict (bucket, window_start)
+    do update set request_count = public.admissions_rate_limits.request_count + 1
+    returning request_count into v_count;
+
+    if v_count > p_limits[v_index] and v_exceeded is null then
+      v_exceeded := p_buckets[v_index];
+    end if;
+  end loop;
+
+  if random() < 0.02 then
+    delete from public.admissions_rate_limits where window_start < now() - interval '2 days';
+  end if;
+
+  return v_exceeded;
+end;
+$$;
+
+create or replace function public.admissions_record_cache_hit(p_cache_key text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.admissions_answer_cache
+  set hit_count = hit_count + 1, last_hit_at = now()
+  where cache_key = p_cache_key;
+$$;
+
+revoke execute on function public.admissions_consume_quota(text[], integer[], integer[]) from public, anon, authenticated;
+revoke execute on function public.admissions_record_cache_hit(text) from public, anon, authenticated;
+grant execute on function public.admissions_consume_quota(text[], integer[], integer[]) to service_role;
+grant execute on function public.admissions_record_cache_hit(text) to service_role;
+grant select, insert, update on public.admissions_answer_cache to service_role;
+grant select, insert, update, delete on public.admissions_rate_limits to service_role;

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { retrieve } from "../../lib/admissions/retriever.ts";
+import { DEFAULT_TOP_K, retrieve } from "../../lib/admissions/retriever.ts";
 
 type TestCase = { id: number; topic: string; question: string; expectedSources: string[] };
 
@@ -35,7 +35,7 @@ const summary = {
 if (process.argv.includes("--json")) {
   console.log(JSON.stringify({ summary, results }, null, 2));
 } else {
-  console.log(`Expected sources in top 5: ${summary.matched}/${summary.total}`);
+  console.log(`Expected sources in top ${DEFAULT_TOP_K}: ${summary.matched}/${summary.total}`);
   console.log(`Expected source ranked first: ${summary.topMatched}/${summary.total}`);
 
   for (const result of scored.filter((item) => !item.matchedExpected || !item.topMatched)) {

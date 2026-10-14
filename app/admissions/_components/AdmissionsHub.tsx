@@ -161,6 +161,34 @@ export function AdmissionsHub({ docs, timelines }: AdmissionsHubProps) {
       <section className="adm-wrap adm-section">
         <div className="adm-section-head">
           <div>
+            <span className="section-kicker">CALCULATORS</span>
+            <h2>{L("计算工具", "Calculators")}</h2>
+          </div>
+          <span className="adm-muted">{L("按官方规则在浏览器里计算，不上传成绩", "Official rules, computed in your browser")}</span>
+        </div>
+        <div className="adm-tool-links">
+          {audience === "freshman" && (
+            <>
+              <Link href="/admissions/tools#gpa" className="adm-tool-link">
+                <strong>{L("UC GPA 计算器", "UC GPA calculator")}</strong>
+                <span>{L("按 UC 规则算加权 GPA，并估算是否在加州前 9%。", "Weighted UC GPA plus a statewide top-9% estimate.")}</span>
+              </Link>
+              <Link href="/admissions/tools#ag" className="adm-tool-link">
+                <strong>{L("A-G 课程检查", "A-G checker")}</strong>
+                <span>{L("逐科对照要求，检查 15 门和 12 年级前 11 门。", "Check each subject, the 15-course total, and 11 before 12th grade.")}</span>
+              </Link>
+            </>
+          )}
+          <Link href="/admissions/tools#fees" className="adm-tool-link">
+            <strong>{L("申请费计算", "Application fees")}</strong>
+            <span>{L("选校区，算总费用和免申请费能省多少。", "Pick campuses to see the total and fee-waiver savings.")}</span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="adm-wrap adm-section">
+        <div className="adm-section-head">
+          <div>
             <span className="section-kicker">TOPICS</span>
             <h2>{L("全部专题", "All topics")}</h2>
           </div>
