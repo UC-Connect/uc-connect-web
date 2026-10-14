@@ -4,32 +4,7 @@ All notable updates to UC Connect are recorded here.
 
 UC Connect 的重要更新都会记录在这里。
 
-## Unreleased - 2026-10-14
-
-### Added / 新增
-- Added pre-generated answers for the suggested admissions questions (`npm run admissions:prebuild`), served instantly without a model call.
-  新增推荐问题的预生成回答（`npm run admissions:prebuild`），点击后即时返回，不调用模型。
-- Added a Supabase answer cache for standalone admissions questions, keyed by question, applicant type, and knowledge-base version, with a 30-day lifetime.
-  新增 Supabase 回答缓存：按问题、申请类型和知识库版本存储，有效期 30 天。
-- Added shared rate limits (per hashed IP and a site-wide daily cap) through the `admissions_consume_quota` function; when the daily cap is reached the assistant shows related topic pages.
-  新增共享限流（按哈希后的 IP 和全站每日上限），通过 `admissions_consume_quota` 函数实现；达到每日上限时改为展示相关专题。
-
-- Added calculators at `/admissions/tools`: UC GPA (resident capped-weighted, unweighted, and nonresident) with a statewide top-9% estimate, an A-G checker, and an application fee calculator. All calculations run in the browser.
-  新增计算工具 `/admissions/tools`：UC GPA 计算器（加州居民封顶加权、不加权、外州学生）及加州前 9% 估算、A-G 课程检查、申请费计算，全部在浏览器中完成。
-- Added rule-based chat answers for dates and deadlines, TAG participation by campus, and application fees, answered without a model call.
-  AI 助手新增规则问答：截止日期、各校区是否参加 TAG、申请费，直接由代码回答，不调用模型。
-- Added unit tests (`npm test`) for the rules, calculators, and rule-based answers, including checks that every rule value still appears in its knowledge-base document.
-  新增单元测试（`npm test`），覆盖规则、计算器和规则问答，并校验每个规则数值仍与知识库原文一致。
-- Added UC's full statewide admissions index chart to the knowledge base.
-  知识库补充 UC 加州前 9% 完整对照表。
-
-### Changed / 调整
-- Retrieval now weights rare terms higher (IDF), sends 4 sources instead of 5 to the model, and caps answers at 800 output tokens to save free-tier quota.
-  检索改为对少见词加权（IDF），发送给模型的资料从 5 段减为 4 段，回答上限 800 token，以节省免费额度。
-- Added more Chinese query terms (最低, 多少分).
-  补充中文检索词（最低、多少分）。
-
-## Unreleased - 2026-10-13
+## v0.3.0 - 2026-10-14
 
 ### Added / 新增
 - Added the UC admissions guide at `/admissions`: first-year and transfer views, a fall 2027 key-dates timeline with open/next status, core-requirement highlights, and 20 topic pages summarized from official UC sources.
@@ -44,6 +19,26 @@ UC Connect 的重要更新都会记录在这里。
   新增检索与回答评测脚本（`npm run eval:retrieval`、`npm run eval:agent`），共 51 道测试题，含中文问题。
 - Added an admissions entry to the homepage and desktop navigation.
   在首页和桌面导航中新增申请信息入口。
+- Added pre-generated answers for the suggested admissions questions (`npm run admissions:prebuild`), served instantly without a model call.
+  新增推荐问题的预生成回答（`npm run admissions:prebuild`），点击后即时返回，不调用模型。
+- Added a Supabase answer cache for standalone admissions questions, keyed by question, applicant type, and knowledge-base version, with a 30-day lifetime.
+  新增 Supabase 回答缓存：按问题、申请类型和知识库版本存储，有效期 30 天。
+- Added shared rate limits (per hashed IP and a site-wide daily cap) through the `admissions_consume_quota` function; when the daily cap is reached the assistant shows related topic pages.
+  新增共享限流（按哈希后的 IP 和全站每日上限），通过 `admissions_consume_quota` 函数实现；达到每日上限时改为展示相关专题。
+- Added calculators at `/admissions/tools`: UC GPA (resident capped-weighted, unweighted, and nonresident) with a statewide top-9% estimate, an A-G checker, and an application fee calculator. All calculations run in the browser.
+  新增计算工具 `/admissions/tools`：UC GPA 计算器（加州居民封顶加权、不加权、外州学生）及加州前 9% 估算、A-G 课程检查、申请费计算，全部在浏览器中完成。
+- Added rule-based chat answers for dates and deadlines, TAG participation by campus, and application fees, answered without a model call.
+  AI 助手新增规则问答：截止日期、各校区是否参加 TAG、申请费，直接由代码回答，不调用模型。
+- Added unit tests (`npm test`) for the rules, calculators, and rule-based answers, including checks that every rule value still appears in its knowledge-base document.
+  新增单元测试（`npm test`），覆盖规则、计算器和规则问答，并校验每个规则数值仍与知识库原文一致。
+- Added UC's full statewide admissions index chart to the knowledge base.
+  知识库补充 UC 加州前 9% 完整对照表。
+
+### Changed / 调整
+- Retrieval now weights rare terms higher (IDF), sends 4 sources instead of 5 to the model, and caps answers at 800 output tokens to save free-tier quota.
+  检索改为对少见词加权（IDF），发送给模型的资料从 5 段减为 4 段，回答上限 800 token，以节省免费额度。
+- Added more Chinese query terms (最低, 多少分).
+  补充中文检索词（最低、多少分）。
 
 ## v0.2.1 - 2026-08-08
 
