@@ -23,13 +23,32 @@ A student who qualifies under either path and is not admitted to any UC campus t
 
 Students qualify if they rank in the top 9 percent of California high school students according to UC's updated Statewide Index.
 
-UC's admissions index instructions estimate statewide index status from two inputs: the UC GPA and the number of A-G semester courses (courses completed in 9th-11th grade plus courses in progress or planned for 12th grade). UC calls the result "just an estimate and not a guarantee." Examples from UC's chart of minimum A-G course counts by GPA:
-- GPA 3.60-3.64: 76 A-G semester courses;
-- GPA 3.80-3.84: 63;
-- GPA 4.00-4.04: 46;
-- GPA 4.25 or above: 30.
+UC's admissions index instructions estimate statewide index status from two inputs: the UC GPA and the number of A-G semester courses (courses completed in 9th-11th grade plus courses in progress or planned for 12th grade). UC calls the result "just an estimate and not a guarantee."
+
+To count A-G semester courses, UC's instructions say: for a quarter system, divide the number of quarter courses by 2; for a trimester system, divide the number of trimester courses by 1.5; count a yearlong course with one grade as 2.
+
+UC's chart of the minimum number of A-G semester courses needed for each GPA range:
+
+| UC GPA | Minimum A-G semester courses |
+|---|---|
+| 3.60-3.64 | 76 |
+| 3.65-3.69 | 74 |
+| 3.70-3.74 | 70 |
+| 3.75-3.79 | 66 |
+| 3.80-3.84 | 63 |
+| 3.85-3.89 | 58 |
+| 3.90-3.94 | 54 |
+| 3.95-3.99 | 50 |
+| 4.00-4.04 | 46 |
+| 4.05-4.09 | 41 |
+| 4.10-4.14 | 37 |
+| 4.15-4.19 | 34 |
+| 4.20-4.24 | 32 |
+| 4.25 or above | 30 |
 
 UC's chart starts at a 3.60 GPA.
+
+Source for the chart: https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/california-residents/statewide-guarantee/admissions-index-instructions.html
 
 ## Eligibility in the Local Context (ELC)
 

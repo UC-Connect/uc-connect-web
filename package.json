@@ -8,7 +8,8 @@
     "start": "next start",
     "eval:retrieval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/admissions/eval-retrieval.ts",
     "eval:agent": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/eval-agent.ts",
-    "admissions:prebuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/prebuild-answers.ts"
+    "admissions:prebuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/prebuild-answers.ts",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/admissions/*.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.0",

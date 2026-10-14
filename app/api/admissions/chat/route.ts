@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { AssistantError, retrieveForConversation, streamAnswer, type AnswerEvent, type ChatTurn } from "@/lib/admissions/assistant";
 import { findCachedAnswer, findPrebuiltAnswer, storeCachedAnswer, type CachedAnswer } from "@/lib/admissions/cache";
+import { answerWithRules } from "@/lib/admissions/intents";
 import { consumeModelQuota } from "@/lib/admissions/quota";
 import { checkRateLimit } from "@/lib/admissions/rate-limit";
 
@@ -100,6 +101,17 @@ export async function POST(request: Request) {
 
   if (!history) {
     return Response.json({ error: "history must be a list of { role, content } turns." }, { status: 400 });
+  }
+
+  // Dates, TAG campuses, and fees are answered from rules without a model call.
+  const rule = answerWithRules(question, audience);
+
+  if (rule) {
+    return streamResponse(async (send) => {
+      send({ type: "meta", sources: rule.sources, audience, model: "", rule: rule.intent });
+      send({ type: "delta", text: rule.answer });
+      send({ type: "done" });
+    });
   }
 
   // Suggested questions are standalone, so their pre-generated answers apply even mid-conversation.

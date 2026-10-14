@@ -14,6 +14,15 @@ UC Connect 的重要更新都会记录在这里。
 - Added shared rate limits (per hashed IP and a site-wide daily cap) through the `admissions_consume_quota` function; when the daily cap is reached the assistant shows related topic pages.
   新增共享限流（按哈希后的 IP 和全站每日上限），通过 `admissions_consume_quota` 函数实现；达到每日上限时改为展示相关专题。
 
+- Added calculators at `/admissions/tools`: UC GPA (resident capped-weighted, unweighted, and nonresident) with a statewide top-9% estimate, an A-G checker, and an application fee calculator. All calculations run in the browser.
+  新增计算工具 `/admissions/tools`：UC GPA 计算器（加州居民封顶加权、不加权、外州学生）及加州前 9% 估算、A-G 课程检查、申请费计算，全部在浏览器中完成。
+- Added rule-based chat answers for dates and deadlines, TAG participation by campus, and application fees, answered without a model call.
+  AI 助手新增规则问答：截止日期、各校区是否参加 TAG、申请费，直接由代码回答，不调用模型。
+- Added unit tests (`npm test`) for the rules, calculators, and rule-based answers, including checks that every rule value still appears in its knowledge-base document.
+  新增单元测试（`npm test`），覆盖规则、计算器和规则问答，并校验每个规则数值仍与知识库原文一致。
+- Added UC's full statewide admissions index chart to the knowledge base.
+  知识库补充 UC 加州前 9% 完整对照表。
+
 ### Changed / 调整
 - Retrieval now weights rare terms higher (IDF), sends 4 sources instead of 5 to the model, and caps answers at 800 output tokens to save free-tier quota.
   检索改为对少见词加权（IDF），发送给模型的资料从 5 段减为 4 段，回答上限 800 token，以节省免费额度。

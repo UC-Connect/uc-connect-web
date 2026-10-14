@@ -8,9 +8,11 @@ export function AdmissionsHeader() {
   const pathname = usePathname();
   const { lang, setLang, L } = useLang();
   const onAsk = pathname.startsWith("/admissions/ask");
+  const onTools = pathname.startsWith("/admissions/tools");
   const links = [
     { href: "/", label: L("任务广场", "Tasks"), active: false },
-    { href: "/admissions", label: L("申请信息", "Admissions"), active: !onAsk },
+    { href: "/admissions", label: L("申请信息", "Admissions"), active: !onAsk && !onTools },
+    { href: "/admissions/tools", label: L("计算工具", "Calculators"), active: onTools },
     { href: "/admissions/ask", label: L("AI 助手", "Ask AI"), active: onAsk },
   ];
 

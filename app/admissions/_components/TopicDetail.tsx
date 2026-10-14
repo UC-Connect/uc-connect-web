@@ -25,6 +25,14 @@ type TopicDetailProps = {
   related: { slug: string; title: string; titleZh: string }[];
 };
 
+const TOOL_LINKS: Record<string, { hash: string; zh: string; en: string }> = {
+  "freshman-gpa-calculation": { hash: "gpa", zh: "用 UC GPA 计算器算一算", en: "Try the UC GPA calculator" },
+  "statewide-and-elc-guarantee": { hash: "gpa", zh: "用计算器估算是否在前 9%", en: "Estimate your statewide top-9% status" },
+  "nonresident-and-international-applicants": { hash: "gpa", zh: "计算外州学生的 UC GPA", en: "Calculate a nonresident UC GPA" },
+  "a-g-subject-requirements": { hash: "ag", zh: "用 A-G 检查工具对照", en: "Check your courses with the A-G checker" },
+  "application-fees-and-waivers": { hash: "fees", zh: "算一下申请费", en: "Calculate your application fees" },
+};
+
 export function TopicDetail({ doc, body, related }: TopicDetailProps) {
   const { lang, L, pick } = useLang();
   const askAudience: ApplicantType = doc.audience === "transfer" ? "transfer" : "freshman";
@@ -83,6 +91,12 @@ export function TopicDetail({ doc, body, related }: TopicDetailProps) {
         </article>
 
         <aside className="adm-aside">
+          {TOOL_LINKS[doc.slug] && (
+            <Link href={`/admissions/tools#${TOOL_LINKS[doc.slug].hash}`} className="adm-tool-link">
+              <strong>{L(TOOL_LINKS[doc.slug].zh, TOOL_LINKS[doc.slug].en)} →</strong>
+              <span>{L("按官方规则计算，成绩不会上传", "Computed from official rules; nothing is uploaded")}</span>
+            </Link>
+          )}
           <div className="adm-aside-card adm-aside-ask">
             <h2>{L("还有疑问？", "Still have questions?")}</h2>
             <p>{L("AI 助手会基于这些官方资料回答，并标出出处。", "The assistant answers from these official sources and cites each claim.")}</p>

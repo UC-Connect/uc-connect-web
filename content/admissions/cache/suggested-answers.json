@@ -1,11 +1,11 @@
 {
-  "kbVersion": "7e0447e6a0c7",
-  "generatedAt": "2026-10-14T22:58:01.580Z",
+  "kbVersion": "23b8fb12e4c9",
+  "generatedAt": "2026-10-14T23:09:00.122Z",
   "answers": [
     {
       "question": "UC GPA 怎么算？哪些年级计入？",
       "audience": "freshman",
-      "answer": "UC 的官方 UC GPA 是在提交申请时由 UC 计算的，学生自己计算的 GPA 仅为估算值 [1]。\n\n**哪些年级计入：**\n- 计算时使用完成于 **9 年级结束后的夏天到 11 年级结束后的夏天** 之间的 A-G 课程 [1]。\n- **不**包括 9 年级和 12 年级的成绩 [1]。\n- 9 年级结束后的夏天和 10 年级结束后的夏天算作 10 年级；11 年级结束后的夏天算作 11 年级 [1]。\n\n**UC GPA 的计算方法：**\n1. 将字母成绩转换为分数：A = 4，B = 3，C = 2，D = 1。正负号不计 [1]。\n2. 加上荣誉加权分（仅限加州居民）：每完成一个学期的 UC 认可荣誉课程（如 AP、IB 高级课程、指定的 IB 标准级课程、可转学至 UC 的大学课程或 UC 认证的荣誉课程）可获得 1 个额外加权分 [1]。\n   - 荣誉加权分在 10 年级和 11 年级总共**上限为 8 个** [1]。\n   - 10 年级的荣誉加权分**最多 4 个** [1]。\n   - 荣誉课程如果得了 D 或 F 则没有额外加权分 [1]。\n3. 将包含荣誉加权分在内的总绩点除以在这些课程中获得的字母成绩总数。计算结果不进行四舍五入 [1]。\n\n请注意，加州居民的最低 A-G 课程 GPA 要求为 **3.0**，非加州居民为 **3.4** [1]。这属于 UC 全校范围的最低 eligibility（资格）要求，并非任何校区或专业的竞争性（competitive）GPA [1]。",
+      "answer": "UC GPA 的计算方法以及计入的年级规定如下：\n\n**计入年级**\n* 计入 UC GPA 的是**完成 9 年级后的夏天到完成 11 年级后的夏天之间**所修读的 A-G 课程 [1]。\n* **不计入** 9 年级和 12 年级的成绩 [1]。\n* 暑假归属：9 年级之后的夏天和 10 年级之后的夏天计为 10 年级；11 年级之后的夏天计为 11 年级 [1]。\n\n**计算步骤**\n1. 将字母成绩转换为分值：A = 4，B = 3，C = 2，D = 1（加号 (+) 和减号 (-) 不计入）[1]。\n2. 加州居民（California residents）可计入荣誉加权分：符合条件的 UC 认证荣誉课程（如 AP、IB Higher Level、特定 IB Standard Level、UC 可转学大学课程或 UC 认证荣誉课程）每学期可加 1 分 [1]。\n   * 加州居民的荣誉加权分总上限为 **8** 分，其中 10 年级的荣誉加权分最多 **4** 分 [1]。\n   * 荣誉课程获得 D 或 F 成绩不加分 [1]。\n3. 将包含荣誉加权分在内的总绩点分除以在这些课程中获得的字母成绩总数（不进行四舍五入）[1]。\n\n非加州居民（Nonresidents）的荣誉加权规则有所不同：计算 3.4 最低标准时，UC 仅对 AP 和 IB 课程且成绩为 A、B 或 C 的课程给予荣誉加权 [1]。\n\n需要注意的是，UC 官方会在提交申请时计算官方的 UC GPA，学生自行计算的 GPA 仅供参考 [1]。最低 GPA 要求并非任何校区或专业的竞争性 GPA [1]。我无法根据 UC Connect 当前的资料核实这一点，请查看 UC、校区、院系或 ASSIST 的官方页面 [1]。",
       "sources": [
         {
           "number": 1,
@@ -15,13 +15,21 @@
           "url": "https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/gpa-requirement.html",
           "lastReviewed": "2026-10-13",
           "audience": "freshman"
-        },
+        }
+      ],
+      "model": "models/gemini-flash-lite-latest"
+    },
+    {
+      "question": "How is the UC GPA calculated?",
+      "audience": "freshman",
+      "answer": "The UC GPA is calculated using the following steps for first-year applicants:\n\n* **Course timeframe:** Use A-G courses completed from the summer after 9th grade through the summer after 11th grade (grades from 9th and 12th are not included) [1].\n* **Grade points:** Convert letter grades to points where A = 4, B = 3, C = 2, and D = 1 (pluses and minuses do not count) [1].\n* **Honors points (California residents):** Add one extra point per semester for UC-recognized honors courses (such as AP, IB, or UC-transferable college courses), subject to caps of 8 total across 10th and 11th grades, with no more than 4 coming from 10th grade [1]. (For nonresidents, honors weight for the 3.4 minimum is given only to AP and IB courses for grades of A, B, or C) [1].\n* **Calculation:** Divide the total grade points (including honors points) by the number of letter grades earned in those courses, without rounding up or down [1].\n\nNote that the UC calculates your official UC GPA when you submit your application, so any self-calculated GPA is only an estimate [1].",
+      "sources": [
         {
-          "number": 2,
-          "slug": "statewide-and-elc-guarantee",
-          "title": "UC Statewide Guarantee and Eligibility in the Local Context (ELC)",
-          "titleZh": "加州前 9% 保底录取",
-          "url": "https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/california-residents/",
+          "number": 1,
+          "slug": "freshman-gpa-calculation",
+          "title": "UC First-Year GPA Requirement and Calculation",
+          "titleZh": "UC GPA 怎么算",
+          "url": "https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/gpa-requirement.html",
           "lastReviewed": "2026-10-13",
           "audience": "freshman"
         }
@@ -31,7 +39,7 @@
     {
       "question": "A-G 课程有哪些要求？",
       "audience": "freshman",
-      "answer": "第一年的新生（first-year）申请者必须完成 **15** 门全年制的大学预科课程（即 A-G 课程），成绩需达到 **C** 或更高 [1, 2]。其中至少 **11** 门课程必须在高中最后一年开始前完成 [1, 2]。\n\n具体要求包括：\n* **课程时间要求**：除数学和除英语以外的其他语言（language other than English）外，课程必须在 9 至 12 年级期间完成 [1]。7 或 8 年级修读的数学和语言课程，如果被高中认可，也可以计算在内 [1]。\n* **成绩要求**：A-G 课程成绩需达到 **C** 或更高 [1, 2]。对于加州居民，A-G 课程的 UC GPA 须达到 **3.0** 或更高；对于非加州居民，UC GPA 须达到 **3.4** 或更高，且不能有低于 C 的成绩 [2]。\n* **加州学生**：必须选修学校的 UC 批准的 A-G 课程列表中的课程，可以在 UC 的 A-G 课程列表网站上进行核对 [1]。\n\n*使用大学课程满足 A-G 要求*：\n用于满足 A-G 要求的大学课程必须满足以下条件：\n* 由七个前地区认证机构之一认证的学院提供 [1]；\n* 属于 UC-transferable（英语和数学除外） [1]；\n* 学分至少为 3 个学期学分（semester units）或 4 个季度学分（quarter units） [1]；\n* 明确属于 A-G 学科领域 [1]；\n* 采取记分制（letter grade）且成绩达到 **C (2.0)** 或更高 [1]。\n\n需要注意的是，满足最低要求仅具备申请资格，不能保证被任何校区或专业录取 [2]。此外，A-G 课程的具体列表请在学校的 UC A-G 课程列表网站上核对 [1]。",
+      "answer": "第一年（Freshman，新生）申请者必须完成 **15 门**全年制的大学预科课程（称为 A-G 课程），成绩需达到 **C** 或更高 [1, 2]。其中至少有 **11 门**必须在高中最后一年开始之前完成 [1, 2]。\n\n具体要求包括：\n* **修读年级限制**：除数学和除英语以外的其他语言（language other than English）外，课程必须在 9 至 12 年级期间完成 [1]。7 或 8 年级修读的数学和语言课程，如果被高中认可，也可以计算在内 [1]。\n* **加州学生**：必须修读其所在学校的 UC 认证 A-G 课程列表中的课程，可以在 UC 的 A-G 课程列表网站上进行核对 [1]。\n\n如果使用大学课程（college courses）来满足 A-G 要求，该课程必须满足以下条件：\n* 来自获得七个前地区认证机构之一认证的大学 [1]；\n* 属于 UC 可转学课程（英语和数学除外）[1]；\n* 学分至少为 3 个学期学分（semester units）或 4 个季度学分（quarter units）[1]；\n* 明确属于 A-G 学科领域 [1]；\n* 必须按字母成绩制（letter grade）修读，且成绩达到 **C (2.0)** 或更高 [1]。\n\n请注意，满足最低要求仅使学生有资格被考虑，并不保证被任何校区或专业录取 [2]。至于具体的某门高中课程是否获得 A-G 认证，请在 UC A-G 课程列表网站上查看您学校的列表 [1]。",
       "sources": [
         {
           "number": 1,
@@ -57,7 +65,7 @@
     {
       "question": "What are the A-G requirements?",
       "audience": "freshman",
-      "answer": "First-year applicants must complete **15** yearlong college-preparatory courses, known as A-G courses, with a grade of **C** or better [1]. At least **11** of these **15** courses must be completed before the start of the last year of high school [1]. \n\nKey details about the A-G requirements include:\n- Except for mathematics and language other than English, courses must be completed in grades 9 through 12 [1]. Math and language courses taken in 7th or 8th grade can count if the high school accepts them [1].\n- California students must take courses on their school's UC-approved A-G course list [1]. \n- College courses can also be used to meet A-G requirements if they meet specific criteria, such as being transferable, worth at least 3 semester units or 4 quarter units, and taken for a letter grade of C (2.0) or better [1].\n\nMeeting these minimum requirements makes a student eligible to be considered, but it does not guarantee admission to any campus or major [2].",
+      "answer": "First-year applicants must complete 15 yearlong college-preparatory courses, known as A-G courses, with a grade of C or better [1, 2]. \n\nKey rules for A-G requirements include:\n- **Timing:** At least 11 of the 15 courses must be completed before the start of the last year of high school [1, 2].\n- **Grade Levels:** Except for mathematics and language other than English, courses must be completed in grades 9 through 12. Math and language courses taken in 7th or 8th grade can count if the high school accepts them [1].\n- **Course Lists:** California students must take courses on their school's UC-approved A-G course list, which can be checked on UC's A-G course list website [1].\n- **College Courses:** College courses used to meet A-G requirements must be from a regionally accredited college, UC-transferable (with exceptions for English and math), worth at least 3 semester units or 4 quarter units, fall within an A-G subject area, and be taken for a letter grade with a C (2.0) or better [1].\n\nMeeting these minimum requirements makes a student eligible to be considered, but it does not guarantee admission to any campus or major [2].",
       "sources": [
         {
           "number": 1,
@@ -83,7 +91,7 @@
     {
       "question": "UC 看 SAT 成绩吗？",
       "audience": "freshman",
-      "answer": "UC 不会将 SAT 或 ACT 成绩用于本科新生（first-year）的录取决定或 Regents and Chancellor's scholarships 的评选 [1]。UC 当前的新生要求中未列出 SAT 或 ACT 要求 [1]。\n\n不过，分数仍可能在有限的范围内使用，例如作为满足最低要求的替代方法，或在入学后用于课程分班 [1]。此外，SAT 写作与语言（SAT Writing and Language）成绩仍可作为州外或国际新生证明英语熟练度（English proficiency）的方法之一（注意：数字版 SAT 阅读与写作部分的分数未被批准用于此项要求）[2]。",
+      "answer": "UC 在招生决定或颁发 Regents and Chancellor's scholarships（摄政王和校长奖学金）时**不考虑** SAT 或 ACT 成绩，UC 目前的第一年（freshman）入学要求中也没有列出 SAT 或 ACT 的要求 [1]。\n\n不过，成绩在以下有限的方面仍可能会被使用：\n* 作为满足最低要求的替代方法 [1]\n* 入学后的课程分班（course placement） [1]\n\n此外，对于国际或州外第一年申请者，满足英语语言 proficiency（熟练度）要求的方式中包括 **SAT Writing and Language**（达到 **31** 或更高），但数字 SAT 的阅读和写作部分成绩未被批准用于此项要求 [2]。",
       "sources": [
         {
           "number": 1,
@@ -109,7 +117,7 @@
     {
       "question": "Does UC consider SAT scores?",
       "audience": "freshman",
-      "answer": "No, UC does not consider SAT or ACT scores in admissions decisions or when awarding Regents and Chancellor's scholarships [1]. \n\nHowever, scores may still be used in limited ways, such as an alternative way to meet minimum requirements or for course placement after enrollment [1]. Additionally, a specific SAT score (SAT Writing and Language of **31** or higher) is one of the approved ways international or out-of-state applicants can demonstrate English language proficiency, though the digital SAT Reading and Writing section score is not approved for this requirement [2].",
+      "answer": "No, UC does not consider SAT or ACT scores in admissions decisions or for awarding Regents and Chancellor's scholarships [1]. \n\nHowever, scores may still be used in limited ways, such as an alternative way to meet minimum requirements or for course placement after enrollment [1]. Additionally, an SAT Writing and Language score of **31** or higher can be used to demonstrate English proficiency for applicants who need it (note: the digital SAT Reading and Writing section score is not approved for this requirement) [2].",
       "sources": [
         {
           "number": 1,
@@ -135,7 +143,7 @@
     {
       "question": "2027 秋季新生申请什么时候截止？",
       "audience": "freshman",
-      "answer": "对于 **2027 秋季新生（first-year）**申请，申请提交期（filing period）为 **2026 年 10 月 1 日至 11 月 30 日** [1]。\n\n以下是 2027 秋季新生申请的相关重要时间节点：\n* **2026 年 8 月 1 日**：UC 申请系统对 2027 秋季申请者开放 [1]。\n* **2026 年 10 月 1 日 – 11 月 30 日**：2027 秋季申请提交期 [1]。",
+      "answer": "对于 2027 秋季新生（first-year）申请，申请提交（filing）期为 **2026 年 10 月 1 日至 11 月 30 日** [1]。\n\n以下是 2027 秋季新生申请的相关时间节点：\n- **2026 年 8 月 1 日**：UC 申请系统对 2027 秋季申请者开放 [1]。\n- **2026 年 10 月 1 日 – 11 月 30 日**：2027 秋季申请提交期 [1]。",
       "sources": [
         {
           "number": 1,
@@ -161,7 +169,7 @@
     {
       "question": "When is the fall 2027 first-year deadline?",
       "audience": "freshman",
-      "answer": "For fall 2027 first-year applicants, the application filing (submission) period is **October 1 – November 30, 2026** [1]. \n\nOther key dates for the fall 2027 first-year term include:\n- **August 1, 2026**: The UC application opens for fall 2027 applicants [1].\n- **May 1, 2027**: Statement of Intent to Register (SIR) deadline for admitted fall 2027 first-year students [1].",
+      "answer": "For fall 2027 first-year applicants, the application submission period is **October 1 – November 30, 2026** [1]. \n\nHere are the key dates for the fall 2027 first-year timeline:\n* **August 1, 2026:** The UC application opens for fall 2027 applicants [1].\n* **October 1 – November 30, 2026:** Fall 2027 application filing (submission) period [1].",
       "sources": [
         {
           "number": 1,
@@ -187,7 +195,7 @@
     {
       "question": "转学需要多少学分？",
       "audience": "transfer",
-      "answer": "对于大三转学（junior-level transfer），UC 表示申请者通常需要完成至少 **60 semester units**（学期学分）或 **90 quarter units**（学季学分）的 UC 可转学大学学分 [1]。\n\n请注意，校区、学院和专业可能还有额外的要求，建议使用 ASSIST 来确认加州社区大学的课程是否可转学以及它们如何满足要求 [1]。",
+      "answer": "对于 UC 转学（transfer admissions），申请大三（junior-level）转学 eligibility 时，UC 通常要求申请者完成至少 **60 semester units**（学期学分）或 **90 quarter units**（学季学分）的可转学大学学分（UC-transferable college credit）[1]。\n\n请注意，各校区（campus）、学院（college）和专业（major）可能有不同的具体学分、课程和 GPA 要求 [1]。",
       "sources": [
         {
           "number": 1,
@@ -231,7 +239,7 @@
     {
       "question": "How many units do I need to transfer?",
       "audience": "transfer",
-      "answer": "For junior-level transfer eligibility, you generally need to complete at least **60 semester units** or **90 quarter units** of UC-transferable college credit [1]. \n\nPlease note that individual campuses, colleges, and majors may have additional specific course or unit preparation requirements [1].",
+      "answer": "For junior-level transfer eligibility, you generally must complete at least **60 semester units** or **90 quarter units** of UC-transferable college credit [1]. \n\nPlease note that campus, college, and major preparation requirements may be additional [1].",
       "sources": [
         {
           "number": 1,
@@ -275,7 +283,7 @@
     {
       "question": "哪些校区参加 TAG？",
       "audience": "transfer",
-      "answer": "参加 TAG（Transfer Admission Guarantee，转学录取保证）的六个 UC 校区包括：\n\n- UC Davis [2]\n- UC Irvine [2]\n- UC Merced [2]\n- UC Riverside [2]\n- UC Santa Barbara [2]\n- UC Santa Cruz [2]\n\nUC Berkeley、UCLA 和 UC San Diego 不参加 TAG [2]。需要注意的是，并非每个参与校区的所有专业都符合 TAG 条件，TAG 的具体要求、GPA 门槛、所需课程、排除的专业和截止日期也因校区和申请周期而异 [2]。",
+      "answer": "参加转学录取保证（TAG，Transfer Admission Guarantee）的 6 个加州大学校区包括：\n\n- UC Davis [2]\n- UC Irvine [2]\n- UC Merced [2]\n- UC Riverside [2]\n- UC Santa Barbara [2]\n- UC Santa Cruz [2]\n\n需要注意的是，UC Berkeley、UCLA 和 UC San Diego 不参加 TAG [2]。此外，TAG 的资格要求、GPA 门槛、所需课程、排除的专业以及截止日期因校区和申请周期而异，并且并非每个参与校区的每个专业都符合 TAG 条件 [2]。",
       "sources": [
         {
           "number": 1,
@@ -310,7 +318,7 @@
     {
       "question": "Which campuses participate in TAG?",
       "audience": "transfer",
-      "answer": "Six UC campuses participate in the Transfer Admission Guarantee (TAG) program:\n- UC Davis [1]\n- UC Irvine [1]\n- UC Merced [1]\n- UC Riverside [1]\n- UC Santa Barbara [1]\n- UC Santa Cruz [1]\n\nUC Berkeley, UCLA, and UC San Diego do not participate in TAG [1]. \n\nPlease note that eligibility requirements, GPA thresholds, required coursework, deadlines, and excluded majors vary by campus and application cycle, and not every major at participating campuses is eligible [1].",
+      "answer": "Six UC campuses participate in the Transfer Admission Guarantee (TAG) program [1]:\n\n* **UC Davis** [1]\n* **UC Irvine** [1]\n* **UC Merced** [1]\n* **UC Riverside** [1]\n* **UC Santa Barbara** [1]\n* **UC Santa Cruz** [1]\n\nUC Berkeley, UCLA, and UC San Diego do not participate in TAG [1]. \n\nPlease note that not every major at every participating campus is eligible for TAG, and requirements such as GPA thresholds and coursework vary by campus and application cycle [1].",
       "sources": [
         {
           "number": 1,
@@ -345,7 +353,7 @@
     {
       "question": "IGETC 是必须完成的吗？",
       "audience": "transfer",
-      "answer": "对于 UC 转学申请者来说，完成 IGETC 或 Cal-GETC 并不是自动要求的 [1]。是否适合使用这些通识教育模式，取决于你申请的校区（campus）、学院（college）、学校（school）以及专业（major） [1]。某些高学分或结构紧凑的专业可能会优先考虑专业预备课程（major preparation） [1]。\n\n如果你是加州社区学院（California community college）的学生：\n- 在 2025 年秋季之前入学的学生可以使用 IGETC [1]。\n- 从 **2025 年秋季**开始，Cal-GETC 是新入学的加州社区学院学生的通识教育模式 [1]。\n- UC 将继续接受有效的 IGETC 认证 [1]。\n\n建议你向加州社区学院的辅导员核实适用的模式和认证状态 [1]。\n\n我无法根据 UC Connect 当前的资料核实这一点，请查看 UC、校区、院系或 ASSIST 的官方页面。",
+      "answer": "完成 IGETC 或 Cal-GETC 并不是每一个 UC 转学申请者的强制要求 [1]。其适用性取决于具体的校区（campus）、学院（college）、学校（school）以及专业（major），并且某些高学分或高度结构化的专业可能会优先考虑专业准备课程 [1]。\n\n为了确定最适合您的方案，建议向您的加州社区学院（California community college）辅导员核实适用的通识教育模式和认证状态 [1]。",
       "sources": [
         {
           "number": 1,
@@ -362,7 +370,7 @@
     {
       "question": "Is IGETC required for every transfer student?",
       "audience": "transfer",
-      "answer": "Completion of IGETC or Cal-GETC is not automatically required for every UC transfer applicant [1]. Its suitability and requirement may depend on the campus, college, school, and major, and some high-unit or highly structured majors may prioritize major preparation [1].",
+      "answer": "No, completion of IGETC or Cal-GETC is not automatically required for every UC transfer applicant [1]. Suitability may depend on the campus, college, school, and major, and some high-unit or highly structured majors may prioritize major preparation instead [1].",
       "sources": [
         {
           "number": 1,
@@ -397,7 +405,7 @@
     {
       "question": "转学 PIQ 要写几篇？",
       "audience": "transfer",
-      "answer": "转学申请人总共需要回答 **4** 篇个人自我认知问题（PIQ，Personal Insight Questions），其中包括 1 道必答题和其余 7 道可选题目中的 3 道 [1]。每篇回答最多可以写 **350** 个英文单词（words） [1]。",
+      "answer": "转学申请人总共需要回答 **4** 篇个人心智问题（PIQ） [1]。\n\n具体要求如下：\n* 必须回答 **1** 道关于专业准备的必答题 [1]。\n* 从其余的 **7** 道题目中任选 **3** 篇进行回答 [1]。\n* 每篇回答的长度上限为 **350 个英文单词（words）** [1]。",
       "sources": [
         {
           "number": 1,
@@ -414,7 +422,7 @@
     {
       "question": "How many PIQs do transfer applicants write?",
       "audience": "transfer",
-      "answer": "Transfer applicants answer **4** personal insight questions (PIQs) in total: **1** required question and **3** of the remaining **7** questions [1]. Each response can be up to **350** words [1].",
+      "answer": "Transfer applicants must answer **4** personal insight questions (PIQs) in total [1]. This includes **1** required question about how you have prepared for your intended major, plus **3** additional questions chosen from the remaining **7** options [1]. Each response can be up to **350** words [1].",
       "sources": [
         {
           "number": 1,
@@ -424,32 +432,6 @@
           "url": "https://admission.universityofcalifornia.edu/how-to-apply/applying-as-a-transfer/personal-insight-questions.html",
           "lastReviewed": "2026-10-13",
           "audience": "transfer"
-        }
-      ],
-      "model": "models/gemini-flash-lite-latest"
-    },
-    {
-      "question": "How is the UC GPA calculated?",
-      "audience": "freshman",
-      "answer": "The UC GPA is calculated for first-year applicants using the following steps [1]:\n\n* **Course timeframe:** Use A-G courses completed from the summer after 9th grade through the summer after 11th grade (9th and 12th grade grades are not included) [1].\n* **Grade points:** Convert letter grades to points where **A = 4**, **B = 3**, **C = 2**, and **D = 1** (pluses and minuses do not count) [1].\n* **Honors points (California residents):** Add one extra point per semester for UC-recognized honors courses, including AP, IB Higher Level, designated IB Standard Level, UC-transferable college courses, or UC-certified honors courses [1]. These are subject to caps of **8 total** across 10th and 11th grades, with no more than **4** coming from 10th grade [1]. A grade of D or F in an honors course earns no extra point [1]. The summer after 9th grade and the summer after 10th grade count as 10th grade, and the summer after 11th grade counts as 11th grade [1].\n* **Final calculation:** Divide the total grade points (including honors points) by the number of letter grades earned in those courses, without rounding up or down [1]. \n\nUC calculates the official UC GPA when you submit your application, making any self-calculated GPA an estimate [1].",
-      "sources": [
-        {
-          "number": 1,
-          "slug": "freshman-gpa-calculation",
-          "title": "UC First-Year GPA Requirement and Calculation",
-          "titleZh": "UC GPA 怎么算",
-          "url": "https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/gpa-requirement.html",
-          "lastReviewed": "2026-10-13",
-          "audience": "freshman"
-        },
-        {
-          "number": 2,
-          "slug": "statewide-and-elc-guarantee",
-          "title": "UC Statewide Guarantee and Eligibility in the Local Context (ELC)",
-          "titleZh": "加州前 9% 保底录取",
-          "url": "https://admission.universityofcalifornia.edu/admission-requirements/freshman-requirements/california-residents/",
-          "lastReviewed": "2026-10-13",
-          "audience": "freshman"
         }
       ],
       "model": "models/gemini-flash-lite-latest"
