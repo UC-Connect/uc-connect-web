@@ -4,7 +4,7 @@ import { retrieve, type RetrievedSource, type Retrieval } from "./retriever.ts";
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export type AnswerEvent =
-  | { type: "meta"; sources: RetrievedSource[]; audience: Retrieval["audience"]; model: string }
+  | { type: "meta"; sources: RetrievedSource[]; audience: Retrieval["audience"]; model: string; cached?: boolean }
   | { type: "delta"; text: string }
   | { type: "done" };
 
@@ -27,7 +27,7 @@ type AnswerOptions = {
 };
 
 const DEFAULT_MODEL = "gemini-flash-lite-latest";
-const DEFAULT_MAX_OUTPUT_TOKENS = 2048;
+const DEFAULT_MAX_OUTPUT_TOKENS = 800;
 const DEFAULT_TIMEOUT_MS = 60000;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const RETRYABLE_STATUS_CODES = new Set([429, 503, 504]);
@@ -57,7 +57,7 @@ function getConfig() {
 }
 
 // Short follow-ups ("what about nonresidents?") are retrieved together with the previous question.
-function retrieveForConversation(question: string, history: ChatTurn[], audience: AnswerOptions["audience"]) {
+export function retrieveForConversation(question: string, history: ChatTurn[], audience: AnswerOptions["audience"]) {
   const audienceMode = audience ? "filter" : "boost";
   const direct = retrieve(question, { audience, audienceMode });
   const previousQuestion = [...history].reverse().find((turn) => turn.role === "user")?.content;

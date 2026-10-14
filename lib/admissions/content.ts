@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -71,6 +72,7 @@ const MONTHS = [
 
 let docsCache: AdmissionsDoc[] | null = null;
 let chunksCache: Chunk[] | null = null;
+let versionCache: string | null = null;
 
 export function parseFrontmatter(raw: string): { metadata: Record<string, string>; body: string } {
   if (!raw.startsWith("---")) {
@@ -194,6 +196,23 @@ export function publicBody(doc: AdmissionsDoc): string {
   const guardrailsIndex = withoutTitle.search(new RegExp(`^##\\s+${GUARDRAILS_HEADING}`, "m"));
 
   return (guardrailsIndex === -1 ? withoutTitle : withoutTitle.slice(0, guardrailsIndex)).trim();
+}
+
+// Changes whenever a document or the system prompt changes, so cached answers expire with the content.
+export function getKnowledgeBaseVersion(): string {
+  if (versionCache) {
+    return versionCache;
+  }
+
+  const hash = createHash("sha256");
+
+  for (const file of fs.readdirSync(DOCS_DIR).filter((name) => name.endsWith(".md")).sort()) {
+    hash.update(file).update(fs.readFileSync(path.join(DOCS_DIR, file)));
+  }
+
+  hash.update(loadSystemPrompt());
+  versionCache = hash.digest("hex").slice(0, 12);
+  return versionCache;
 }
 
 export function loadSystemPrompt(): string {

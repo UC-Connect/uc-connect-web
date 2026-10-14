@@ -4,6 +4,22 @@ All notable updates to UC Connect are recorded here.
 
 UC Connect 的重要更新都会记录在这里。
 
+## Unreleased - 2026-10-14
+
+### Added / 新增
+- Added pre-generated answers for the suggested admissions questions (`npm run admissions:prebuild`), served instantly without a model call.
+  新增推荐问题的预生成回答（`npm run admissions:prebuild`），点击后即时返回，不调用模型。
+- Added a Supabase answer cache for standalone admissions questions, keyed by question, applicant type, and knowledge-base version, with a 30-day lifetime.
+  新增 Supabase 回答缓存：按问题、申请类型和知识库版本存储，有效期 30 天。
+- Added shared rate limits (per hashed IP and a site-wide daily cap) through the `admissions_consume_quota` function; when the daily cap is reached the assistant shows related topic pages.
+  新增共享限流（按哈希后的 IP 和全站每日上限），通过 `admissions_consume_quota` 函数实现；达到每日上限时改为展示相关专题。
+
+### Changed / 调整
+- Retrieval now weights rare terms higher (IDF), sends 4 sources instead of 5 to the model, and caps answers at 800 output tokens to save free-tier quota.
+  检索改为对少见词加权（IDF），发送给模型的资料从 5 段减为 4 段，回答上限 800 token，以节省免费额度。
+- Added more Chinese query terms (最低, 多少分).
+  补充中文检索词（最低、多少分）。
+
 ## Unreleased - 2026-10-13
 
 ### Added / 新增

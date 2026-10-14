@@ -18,10 +18,11 @@ type Message = {
   status?: Status;
   error?: string;
   startedAt?: number;
+  cached?: boolean;
 };
 
 type StreamEvent =
-  | { type: "meta"; sources: RetrievedSource[] }
+  | { type: "meta"; sources: RetrievedSource[]; cached?: boolean }
   | { type: "delta"; text: string }
   | { type: "done" }
   | { type: "error"; message: string };
@@ -148,7 +149,7 @@ export function AskChat() {
           const event = JSON.parse(line) as StreamEvent;
 
           if (event.type === "meta") {
-            updateMessage(assistantId, (message) => ({ ...message, sources: event.sources, status: "streaming" }));
+            updateMessage(assistantId, (message) => ({ ...message, sources: event.sources, cached: event.cached, status: "streaming" }));
           } else if (event.type === "delta") {
             updateMessage(assistantId, (message) => ({ ...message, content: message.content + event.text, status: "streaming" }));
           } else if (event.type === "done") {
@@ -346,9 +347,13 @@ function AssistantMessage({ message }: { message: Message }) {
         {message.status === "stopped" && <p className="adm-status">{L("已停止生成。", "Stopped.")}</p>}
         {message.status === "error" && <p className="adm-error">{message.error}</p>}
 
+        {message.cached && message.status === "done" && (
+          <p className="adm-cached">{L("常见问题 · 即时回答", "Common question · instant answer")}</p>
+        )}
+
         {primary.length > 0 && message.status !== "searching" && (
           <div className="adm-sources">
-            <h4>{L("参考资料", "Sources")}</h4>
+            <h4>{message.status === "error" ? L("相关专题", "Related topics") : L("参考资料", "Sources")}</h4>
             {primary.map((source) => <SourceCard key={source.number} source={source} anchorPrefix={anchorPrefix} />)}
             {others.length > 0 && (
               <details>
