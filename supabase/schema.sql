@@ -861,6 +861,9 @@ create table if not exists public.admissions_rate_limits (
   primary key (bucket, window_start)
 );
 
+-- Answers are cached per provider and model (part of cache_key); this column records which one.
+alter table public.admissions_answer_cache add column if not exists provider text;
+
 alter table public.admissions_answer_cache enable row level security;
 alter table public.admissions_rate_limits enable row level security;
 revoke all on public.admissions_answer_cache from anon, authenticated;

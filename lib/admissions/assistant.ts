@@ -1,4 +1,4 @@
-import { getChatProvider, getLLMConfig, LLMError, type ChatMessage, type ChatProvider, type LLMErrorKind } from "../llm/index.ts";
+import { getChatProvider, getLLMConfig, LLMError, type ChatMessage, type ChatProvider, type ChatResult, type LLMErrorKind } from "../llm/index.ts";
 import { loadSystemPrompt, type Audience } from "./content.ts";
 import { retrieve, type RetrievedSource, type Retrieval } from "./retriever.ts";
 
@@ -7,7 +7,7 @@ export type ChatTurn = { role: "user" | "assistant"; content: string };
 export type AnswerEvent =
   | { type: "meta"; sources: RetrievedSource[]; audience: Retrieval["audience"]; model: string; provider?: string; cached?: boolean }
   | { type: "delta"; text: string }
-  | { type: "done" };
+  | ({ type: "done" } & Partial<Omit<ChatResult, "text">>);
 
 export type AssistantErrorCode = "MISSING_API_KEY" | "UPSTREAM_BUSY" | "UPSTREAM_FAILED" | "TIMEOUT" | "EMPTY_ANSWER";
 
@@ -113,28 +113,45 @@ export async function* streamAnswer({ question, history = [], audience = null, s
     { role: "user", content: userPrompt },
   ];
 
+  let result: Omit<ChatResult, "text"> | undefined;
+
   try {
-    for await (const text of provider.stream(messages, { temperature: 0.2, maxTokens: getLLMConfig().maxOutputTokens, signal })) {
+    const options = { temperature: 0.2, maxTokens: getLLMConfig().maxOutputTokens, signal, onDone: (done: Omit<ChatResult, "text">) => (result = done) };
+
+    for await (const text of provider.stream(messages, options)) {
       yield { type: "delta", text };
     }
   } catch (error) {
     throw toAssistantError(error);
   }
 
-  yield { type: "done" };
+  // Reports the provider and model that actually answered (the fallback, if one was used).
+  yield { type: "done", ...result };
 }
 
 export async function answerQuestion(options: AnswerOptions) {
   let answer = "";
   let meta: Extract<AnswerEvent, { type: "meta" }> | undefined;
+  let done: Extract<AnswerEvent, { type: "done" }> | undefined;
 
   for await (const event of streamAnswer(options)) {
     if (event.type === "meta") {
       meta = event;
     } else if (event.type === "delta") {
       answer += event.text;
+    } else {
+      done = event;
     }
   }
 
-  return { answer, sources: meta?.sources ?? [], audience: meta?.audience ?? null, model: meta?.model ?? "" };
+  return {
+    answer,
+    sources: meta?.sources ?? [],
+    audience: meta?.audience ?? null,
+    provider: done?.provider ?? meta?.provider ?? "",
+    model: done?.model ?? meta?.model ?? "",
+    usage: done?.usage,
+    latencyMs: done?.latencyMs,
+    fallback: done?.fallback ?? false,
+  };
 }

@@ -5,15 +5,17 @@ import { getKnowledgeBaseVersion, type Audience } from "./content.ts";
 import type { RetrievedSource } from "./retriever.ts";
 import { getSupabaseAdmin } from "./supabase-admin.ts";
 
-export type CachedAnswer = {
+export type ModelIdentity = { provider: string; model: string };
+
+export type CachedAnswer = ModelIdentity & {
   question: string;
   audience: Exclude<Audience, "all"> | null;
   answer: string;
   sources: RetrievedSource[];
-  model: string;
 };
 
-export type PrebuiltFile = {
+// Pre-generated answers are only served for the knowledge-base version and model that produced them.
+export type PrebuiltFile = ModelIdentity & {
   kbVersion: string;
   generatedAt: string;
   answers: CachedAnswer[];
@@ -53,11 +55,16 @@ export function writePrebuiltFile(file: PrebuiltFile) {
   prebuiltCache = file;
 }
 
-// Answers generated ahead of time for the suggested questions shown in the UI.
-export function findPrebuiltAnswer(question: string): CachedAnswer | null {
+// Answers generated ahead of time for the suggested questions shown in the UI. Without a usable
+// model configuration (identity null) they are still served, since there is no model to ask.
+export function findPrebuiltAnswer(question: string, identity: ModelIdentity | null): CachedAnswer | null {
   const file = readPrebuiltFile();
 
   if (!file || file.kbVersion !== getKnowledgeBaseVersion()) {
+    return null;
+  }
+
+  if (identity && (file.provider !== identity.provider || file.model !== identity.model)) {
     return null;
   }
 
@@ -65,24 +72,25 @@ export function findPrebuiltAnswer(question: string): CachedAnswer | null {
   return file.answers.find((entry) => normalizeQuestion(entry.question) === normalized) ?? null;
 }
 
-function cacheKey(question: string, audience: CachedAnswer["audience"]): string {
+// Switching provider or model, or editing the knowledge base, changes the key, so old answers are never reused.
+export function answerCacheKey(question: string, audience: CachedAnswer["audience"], identity: ModelIdentity): string {
   return createHash("sha256")
-    .update(`${normalizeQuestion(question)}|${audience ?? "auto"}|${getKnowledgeBaseVersion()}`)
+    .update(`${normalizeQuestion(question)}|${audience ?? "auto"}|${identity.provider}:${identity.model}|${getKnowledgeBaseVersion()}`)
     .digest("hex");
 }
 
-export async function findCachedAnswer(question: string, audience: CachedAnswer["audience"]): Promise<CachedAnswer | null> {
+export async function findCachedAnswer(question: string, audience: CachedAnswer["audience"], identity: ModelIdentity): Promise<CachedAnswer | null> {
   const supabase = getSupabaseAdmin();
 
   if (!supabase) {
     return null;
   }
 
-  const key = cacheKey(question, audience);
+  const key = answerCacheKey(question, audience, identity);
   const since = new Date(Date.now() - CACHE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("admissions_answer_cache")
-    .select("question, audience, answer, sources, model")
+    .select("question, audience, answer, sources, provider, model")
     .eq("cache_key", key)
     .gte("created_at", since)
     .maybeSingle();
@@ -103,12 +111,13 @@ export async function storeCachedAnswer(entry: CachedAnswer): Promise<void> {
   }
 
   const { error } = await supabase.from("admissions_answer_cache").upsert({
-    cache_key: cacheKey(entry.question, entry.audience),
+    cache_key: answerCacheKey(entry.question, entry.audience, entry),
     question: entry.question,
     audience: entry.audience,
     kb_version: getKnowledgeBaseVersion(),
     answer: entry.answer,
     sources: entry.sources,
+    provider: entry.provider,
     model: entry.model,
     created_at: new Date().toISOString(),
   });

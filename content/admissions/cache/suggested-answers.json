@@ -1,6 +1,8 @@
 {
   "kbVersion": "23b8fb12e4c9",
   "generatedAt": "2026-10-14T23:09:00.122Z",
+  "provider": "gemini",
+  "model": "gemini-flash-lite-latest",
   "answers": [
     {
       "question": "UC GPA 怎么算？哪些年级计入？",
@@ -17,7 +19,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "How is the UC GPA calculated?",
@@ -34,7 +37,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "A-G 课程有哪些要求？",
@@ -60,7 +64,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "What are the A-G requirements?",
@@ -86,7 +91,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "UC 看 SAT 成绩吗？",
@@ -112,7 +118,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "Does UC consider SAT scores?",
@@ -138,7 +145,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "2027 秋季新生申请什么时候截止？",
@@ -164,7 +172,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "When is the fall 2027 first-year deadline?",
@@ -190,7 +199,8 @@
           "audience": "freshman"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "转学需要多少学分？",
@@ -234,7 +244,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "How many units do I need to transfer?",
@@ -278,7 +289,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "哪些校区参加 TAG？",
@@ -313,7 +325,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "Which campuses participate in TAG?",
@@ -348,7 +361,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "IGETC 是必须完成的吗？",
@@ -365,7 +379,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "Is IGETC required for every transfer student?",
@@ -400,7 +415,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "转学 PIQ 要写几篇？",
@@ -417,7 +433,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     },
     {
       "question": "How many PIQs do transfer applicants write?",
@@ -434,7 +451,8 @@
           "audience": "transfer"
         }
       ],
-      "model": "models/gemini-flash-lite-latest"
+      "model": "gemini-flash-lite-latest",
+      "provider": "gemini"
     }
   ]
 }

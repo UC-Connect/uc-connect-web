@@ -1,4 +1,5 @@
 import { loadLLMConfig, type LLMConfig, type ProviderSpec } from "./config.ts";
+import { FallbackChatProvider } from "./fallback.ts";
 import { GeminiProvider } from "./providers/gemini.ts";
 import { DEEPSEEK_BASE_URL, OpenAICompatibleProvider } from "./providers/openai-compatible.ts";
 import { MockProvider } from "./providers/mock.ts";
@@ -6,6 +7,8 @@ import type { ChatProvider } from "./types.ts";
 
 export { LLMError, type LLMErrorKind } from "./errors.ts";
 export { loadLLMConfig, type LLMConfig } from "./config.ts";
+export { estimateCost, type CostEstimate } from "./pricing.ts";
+export { logUsage, type UsageRecord } from "./usage.ts";
 export type { ChatMessage, ChatOptions, ChatProvider, ChatResult, TokenUsage } from "./types.ts";
 
 let cached: { config: LLMConfig; provider: ChatProvider } | null = null;
@@ -46,7 +49,9 @@ export function createChatProvider(spec: ProviderSpec, config: ProviderSettings,
 export function getChatProvider(): ChatProvider {
   if (!cached) {
     const config = loadLLMConfig();
-    cached = { config, provider: createChatProvider(config.primary, config) };
+    const primary = createChatProvider(config.primary, config);
+    const provider = config.fallback ? new FallbackChatProvider(primary, createChatProvider(config.fallback, config)) : primary;
+    cached = { config, provider };
   }
 
   return cached.provider;
@@ -55,6 +60,16 @@ export function getChatProvider(): ChatProvider {
 export function getLLMConfig(): LLMConfig {
   getChatProvider();
   return (cached as { config: LLMConfig }).config;
+}
+
+// The provider and model answers are generated with, or null when the LLM settings are invalid.
+export function getModelIdentity(): { provider: string; model: string } | null {
+  try {
+    const { primary } = getLLMConfig();
+    return { provider: primary.provider, model: primary.model };
+  } catch {
+    return null;
+  }
 }
 
 // Tests only: forget the cached provider so a changed environment takes effect.

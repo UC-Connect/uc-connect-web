@@ -13,6 +13,18 @@ UC Connect 的重要更新都会记录在这里。
   新增 ESLint（Next.js 配置）以及 `lint`、`typecheck` 脚本。
 - Added an LLM provider layer (`lib/llm`) with a shared chat interface, `LLMError`, zod-validated `LLM_*` settings, a mock provider for tests, and the Gemini provider; an ESLint rule keeps vendor SDKs and API URLs inside `lib/llm/providers`.
   新增 LLM provider 层（`lib/llm`）：统一的对话接口、`LLMError` 错误类型、用 zod 校验的 `LLM_*` 配置、测试用 mock provider 和 Gemini provider；ESLint 规则限制厂商 SDK 和 API 地址只能出现在 `lib/llm/providers`。
+- Added DeepSeek (`deepseek-flash`, thinking disabled) and OpenAI (`gpt-6-luna`, reasoning effort none) through one OpenAI-compatible provider, with streamed token usage.
+  通过统一的 OpenAI 兼容 provider 接入 DeepSeek（`deepseek-flash`，关闭思考模式）和 OpenAI（`gpt-6-luna`，推理强度 none），流式输出时返回 token 用量。
+- Added `LLM_FALLBACK_PROVIDER`: when the primary provider fails with a retryable error before streaming any text, the fallback answers instead.
+  新增 `LLM_FALLBACK_PROVIDER`：主 provider 在开始输出前出现可重试错误时，改由备用 provider 回答。
+- Added per-answer JSON usage logs (provider, model, tokens, latency, estimated cost, cache hit, fallback) and a dated price table.
+  新增每次回答的 JSON 用量日志（provider、模型、token、延迟、估算成本、是否命中缓存、是否走了 fallback）以及注明核对日期的价格表。
+
+### Changed / 调整
+- Answer cache keys and pre-generated answers now include the provider and model, so switching models never serves another model's answers. Re-run `supabase/schema.sql` to add the `provider` column.
+  回答缓存 key 和预生成答案加入 provider 和模型，切换模型后不会读到其他模型的旧答案。需重新运行 `supabase/schema.sql` 以新增 `provider` 列。
+- Each provider now retries once by default (`LLM_MAX_ATTEMPTS=2`) before failing or falling back.
+  每个 provider 默认重试 1 次（`LLM_MAX_ATTEMPTS=2`），之后报错或切换到备用 provider。
 
 ## v0.3.0 - 2026-10-14
 
