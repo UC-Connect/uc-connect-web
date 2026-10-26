@@ -1,5 +1,6 @@
 import { loadLLMConfig, type LLMConfig, type ProviderSpec } from "./config.ts";
 import { GeminiProvider } from "./providers/gemini.ts";
+import { DEEPSEEK_BASE_URL, OpenAICompatibleProvider } from "./providers/openai-compatible.ts";
 import { MockProvider } from "./providers/mock.ts";
 import type { ChatProvider } from "./types.ts";
 
@@ -9,10 +10,32 @@ export type { ChatMessage, ChatOptions, ChatProvider, ChatResult, TokenUsage } f
 
 let cached: { config: LLMConfig; provider: ChatProvider } | null = null;
 
-export function createChatProvider(spec: ProviderSpec, config: Pick<LLMConfig, "timeoutMs" | "maxAttempts">): ChatProvider {
+type ProviderSettings = Pick<LLMConfig, "timeoutMs" | "maxAttempts" | "deepseekThinking" | "openaiReasoningEffort">;
+
+// `transport.fetch` lets tests replace the network while keeping each vendor's request settings.
+export function createChatProvider(spec: ProviderSpec, config: ProviderSettings, transport: { fetch?: typeof fetch } = {}): ChatProvider {
+  const common = { apiKey: spec.apiKey, model: spec.model, timeoutMs: config.timeoutMs, maxAttempts: config.maxAttempts, fetch: transport.fetch };
+
   switch (spec.provider) {
+    case "deepseek":
+      // DeepSeek enables thinking by default; https://api-docs.deepseek.com/zh-cn/guides/thinking_mode
+      return new OpenAICompatibleProvider({
+        ...common,
+        name: "deepseek",
+        baseURL: DEEPSEEK_BASE_URL,
+        maxTokensParam: "max_tokens",
+        extraBody: { thinking: { type: config.deepseekThinking } },
+      });
+    case "openai":
+      return new OpenAICompatibleProvider({
+        ...common,
+        name: "openai",
+        maxTokensParam: "max_completion_tokens",
+        sendTemperature: false,
+        extraBody: { reasoning_effort: config.openaiReasoningEffort },
+      });
     case "gemini":
-      return new GeminiProvider({ apiKey: spec.apiKey, model: spec.model, timeoutMs: config.timeoutMs, maxAttempts: config.maxAttempts });
+      return new GeminiProvider(common);
     case "mock":
       return new MockProvider({ model: spec.model });
   }

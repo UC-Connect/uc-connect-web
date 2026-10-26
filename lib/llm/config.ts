@@ -1,15 +1,20 @@
 import { z } from "zod";
 import { LLMError } from "./errors.ts";
 
-export const PROVIDER_NAMES = ["gemini", "mock"] as const;
+export const PROVIDER_NAMES = ["deepseek", "openai", "gemini", "mock"] as const;
 export type ProviderName = (typeof PROVIDER_NAMES)[number];
 
 export const DEFAULT_MODELS: Record<ProviderName, string> = {
+  deepseek: "deepseek-flash",
+  // gpt-5.4-nano is deprecated; OpenAI recommends gpt-6-luna for cost-sensitive workloads.
+  openai: "gpt-6-luna",
   gemini: "gemini-flash-lite-latest",
   mock: "mock",
 };
 
 const API_KEY_ENV: Record<ProviderName, string | null> = {
+  deepseek: "DEEPSEEK_API_KEY",
+  openai: "OPENAI_API_KEY",
   gemini: "GEMINI_API_KEY",
   mock: null,
 };
@@ -22,6 +27,9 @@ export type LLMConfig = {
   timeoutMs: number;
   maxOutputTokens: number;
   maxAttempts: number;
+  // RAG answers do not need reasoning, so both are off unless explicitly enabled.
+  deepseekThinking: "enabled" | "disabled";
+  openaiReasoningEffort: "none" | "low" | "medium" | "high";
 };
 
 // Empty strings in .env files mean "not set".
@@ -36,7 +44,11 @@ const envSchema = z.object({
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
   LLM_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(800),
   LLM_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(3),
+  DEEPSEEK_API_KEY: optionalString,
+  OPENAI_API_KEY: optionalString,
   GEMINI_API_KEY: optionalString,
+  DEEPSEEK_THINKING: z.preprocess((value) => (value === "" ? undefined : value), z.enum(["enabled", "disabled"]).default("disabled")),
+  OPENAI_REASONING_EFFORT: z.preprocess((value) => (value === "" ? undefined : value), z.enum(["none", "low", "medium", "high"]).default("none")),
   // Older deployments set the Gemini model here; LLM_MODEL takes precedence.
   GEMINI_MODEL: optionalString,
 });
@@ -77,5 +89,7 @@ export function loadLLMConfig(source: Record<string, string | undefined> = proce
     timeoutMs: env.LLM_TIMEOUT_MS,
     maxOutputTokens: env.LLM_MAX_OUTPUT_TOKENS,
     maxAttempts: env.LLM_MAX_ATTEMPTS,
+    deepseekThinking: env.DEEPSEEK_THINKING,
+    openaiReasoningEffort: env.OPENAI_REASONING_EFFORT,
   };
 }

@@ -14,7 +14,8 @@ const eslintConfig = [
   {
     // Only lib/llm/providers may talk to model vendors; everything else goes through lib/llm.
     files: ["**/*.{ts,tsx,js,mjs}"],
-    ignores: ["lib/llm/providers/**"],
+    // Provider tests assert the exact vendor URLs they send requests to.
+    ignores: ["lib/llm/providers/**", "tests/llm/**"],
     rules: {
       "no-restricted-imports": [
         "error",
