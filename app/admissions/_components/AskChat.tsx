@@ -20,18 +20,21 @@ type Message = {
   startedAt?: number;
   cached?: boolean;
   rule?: string;
+  // Server signature for a finished answer; required for the answer to count as follow-up context.
+  signature?: string;
 };
 
 type StreamEvent =
   | { type: "meta"; sources: RetrievedSource[]; cached?: boolean; rule?: string }
   | { type: "delta"; text: string }
-  | { type: "done" }
+  | { type: "done"; signature?: string }
   | { type: "error"; message: string };
 
 const STORAGE_KEY = "uc-connect-admissions-chat";
 const SLOW_NOTICE_MS = 8000;
-const MAX_QUESTION_LENGTH = 1000;
-const HISTORY_TURNS = 6;
+// Mirrors the server limits in lib/admissions/guards.ts.
+const MAX_QUESTION_LENGTH = 500;
+const HISTORY_TURNS = 4;
 
 function newId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -108,7 +111,7 @@ export function AskChat() {
     const history = base
       .filter((message) => message.status === undefined || message.status === "done")
       .slice(-HISTORY_TURNS)
-      .map(({ role, content }) => ({ role, content }));
+      .map(({ role, content, signature }) => (role === "assistant" ? { role, content, signature } : { role, content }));
     const assistantId = newId();
     const controller = new AbortController();
 
@@ -154,7 +157,7 @@ export function AskChat() {
           } else if (event.type === "delta") {
             updateMessage(assistantId, (message) => ({ ...message, content: message.content + event.text, status: "streaming" }));
           } else if (event.type === "done") {
-            updateMessage(assistantId, (message) => ({ ...message, status: "done" }));
+            updateMessage(assistantId, (message) => ({ ...message, status: "done", signature: event.signature }));
           } else if (event.type === "error") {
             updateMessage(assistantId, (message) => ({ ...message, status: "error", error: event.message }));
           }

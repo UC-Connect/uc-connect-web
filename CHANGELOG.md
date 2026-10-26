@@ -24,7 +24,16 @@ UC Connect 的重要更新都会记录在这里。
 - Added the first provider comparison (`eval-results/2026-10-26.md`): DeepSeek, Gemini, gpt-6-luna, and gpt-5.4-nano, plus README sections on architecture, switching models, and adding a provider.
   新增第一份 provider 对比报告（`eval-results/2026-10-26.md`）：DeepSeek、Gemini、gpt-6-luna、gpt-5.4-nano；README 补充架构说明、切换模型和新增 provider 的方法。
 
+- Added abuse and cost guards for the admissions assistant: signed follow-up context, a daily spend budget (`ADMISSIONS_DAILY_BUDGET_CNY`, default ¥5) tracked in Supabase, a kill switch (`ADMISSIONS_AI_ENABLED`), and an estimated prompt-size check before every model call.
+  新增 AI 助手防滥用和成本保护：追问上下文需服务端签名、Supabase 记录的每日花费预算（`ADMISSIONS_DAILY_BUDGET_CNY`，默认 ¥5）、总开关（`ADMISSIONS_AI_ENABLED`），以及每次调用模型前的提示词长度估算。
+- Questions with no matching sources now get a fixed "UC admissions only" reply without a model call.
+  检索不到任何资料的问题直接回复"只回答 UC 申请问题"，不再调用模型。
+
 ### Changed / 调整
+- Tightened chat input limits: questions up to 500 characters and the last 4 turns of history; when Supabase is unavailable, stricter per-instance limits apply instead of none.
+  收紧聊天输入限制：问题最多 500 字，历史最多 4 轮；Supabase 不可用时改用更严格的单实例限流，不再无限制放行。
+- Added Chinese and English query terms for general application questions (申请, apply).
+  补充一般申请问题的中英文检索词（申请、apply）。
 - The default chat model is now DeepSeek `deepseek-flash`, with Gemini recommended as `LLM_FALLBACK_PROVIDER`; suggested-question answers were regenerated with DeepSeek.
   默认对话模型改为 DeepSeek `deepseek-flash`，建议将 Gemini 设为 `LLM_FALLBACK_PROVIDER`；推荐问题的预生成答案已用 DeepSeek 重新生成。
 - Out-of-credit errors (DeepSeek 402, OpenAI `insufficient_quota`) are reported as non-retryable quota errors instead of rate limits.
