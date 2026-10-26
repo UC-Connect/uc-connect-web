@@ -969,3 +969,83 @@ grant execute on function public.admissions_consume_quota(text[], integer[], int
 grant execute on function public.admissions_record_cache_hit(text) to service_role;
 grant select, insert, update on public.admissions_answer_cache to service_role;
 grant select, insert, update, delete on public.admissions_rate_limits to service_role;
+
+-- Admissions assistant: blocklist and usage reporting (service role only).
+-- Rows can also be added by hand in the Supabase table editor to block a user id or hashed IP.
+create table if not exists public.admissions_blocklist (
+  subject text primary key,
+  reason text not null,
+  blocked_until timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.admissions_blocklist enable row level security;
+revoke all on public.admissions_blocklist from anon, authenticated;
+
+create or replace function public.admissions_is_blocked(p_subjects text[])
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.admissions_blocklist
+    where subject = any(p_subjects) and blocked_until > now()
+  );
+$$;
+
+-- Counts a limit violation; after p_threshold violations in a day the subject is blocked for p_block_hours.
+create or replace function public.admissions_record_violation(p_subject text, p_threshold integer, p_block_hours integer)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_window timestamptz := to_timestamp(floor(extract(epoch from now()) / 86400) * 86400);
+  v_count integer;
+begin
+  insert into public.admissions_rate_limits (bucket, window_start, request_count)
+  values ('violation:' || p_subject, v_window, 1)
+  on conflict (bucket, window_start)
+  do update set request_count = public.admissions_rate_limits.request_count + 1
+  returning request_count into v_count;
+
+  if v_count >= p_threshold then
+    insert into public.admissions_blocklist (subject, reason, blocked_until)
+    values (p_subject, 'automatic: ' || v_count || ' limit violations today', now() + make_interval(hours => p_block_hours))
+    on conflict (subject) do update set reason = excluded.reason, blocked_until = greatest(public.admissions_blocklist.blocked_until, excluded.blocked_until);
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+-- Daily model calls and estimated spend (CNY) for the last p_days days, newest first.
+create or replace function public.admissions_usage_report(p_days integer)
+returns table (day date, model_calls integer, spend_cny numeric, blocked_subjects integer)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    d::date as day,
+    coalesce((select request_count from public.admissions_rate_limits where bucket = 'global:day' and window_start = d), 0) as model_calls,
+    coalesce((select amount from public.admissions_spend where bucket = 'spend:global:day' and window_start = d), 0)::numeric / 1000000 as spend_cny,
+    (select count(*)::integer from public.admissions_blocklist where created_at >= d and created_at < d + interval '1 day') as blocked_subjects
+  from generate_series(
+    to_timestamp(floor(extract(epoch from now()) / 86400) * 86400) - make_interval(days => p_days - 1),
+    to_timestamp(floor(extract(epoch from now()) / 86400) * 86400),
+    interval '1 day'
+  ) as d
+  order by d desc;
+$$;
+
+revoke execute on function public.admissions_is_blocked(text[]) from public, anon, authenticated;
+revoke execute on function public.admissions_record_violation(text, integer, integer) from public, anon, authenticated;
+revoke execute on function public.admissions_usage_report(integer) from public, anon, authenticated;
+grant execute on function public.admissions_is_blocked(text[]) to service_role;
+grant execute on function public.admissions_record_violation(text, integer, integer) to service_role;
+grant execute on function public.admissions_usage_report(integer) to service_role;
+grant select, insert, update, delete on public.admissions_blocklist to service_role;

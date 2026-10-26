@@ -164,6 +164,8 @@ Abuse and cost limits (`lib/admissions/guards.ts`, `lib/admissions/quota.ts`):
 - Questions that retrieve nothing get a fixed "UC admissions only" reply without a model call; with no sources the model could only decline anyway.
 - A site-wide daily spend budget (`ADMISSIONS_DAILY_BUDGET_CNY`, default ¥5) is tracked in Supabase from each call's token usage; once it is reached, the assistant shows related topic pages instead of calling the model.
 - `ADMISSIONS_AI_ENABLED=false` turns off model calls immediately; rules, cached answers, topic pages, and calculators keep working.
+- Users or IPs that hit rate limits 20 times in a day (`ADMISSIONS_BLOCK_THRESHOLD`) are blocked from the assistant for 24 hours (`admissions_blocklist`; rows can also be added by hand).
+- The **Assistant usage check** workflow runs hourly, reports the last 7 days (`admissions_usage_report`), and fails when today's spend or model calls pass 70% of the daily limit, so GitHub emails the repository owner. It needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` repository secrets and skips until they are set. Run it locally with `npm run usage:check`.
 
 Calculators at `/admissions/tools` (UC GPA with a statewide top-9% estimate, A-G checker, application fees) use the same rules module and run entirely in the browser.
 
@@ -232,6 +234,7 @@ npm test
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: lint, typecheck, unit tests, the offline retrieval eval (fails below 50/51 matched), and a production build. It makes no model calls.
+- **Assistant usage check** (`.github/workflows/usage-alert.yml`) runs hourly and fails when the assistant's daily spend or calls pass 70% of a limit.
 - **Provider eval** (`.github/workflows/eval.yml`) runs only when started by hand from the Actions tab, because it calls paid APIs. It needs `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` repository secrets and uploads the report as an artifact.
 - **CD** is Vercel's Git integration: every pull request gets a preview deployment, and `main` deploys to production.
 

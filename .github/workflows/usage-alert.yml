@@ -1,0 +1,30 @@
+name: Assistant usage check
+
+# Hourly check of the assistant's daily spend and model calls. The run fails (and GitHub emails
+# the repository owner) when today's usage passes 70% of a limit. Skips until secrets are set.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check usage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADMISSIONS_DAILY_BUDGET_CNY: ${{ vars.ADMISSIONS_DAILY_BUDGET_CNY }}
+          ADMISSIONS_DAILY_LIMIT: ${{ vars.ADMISSIONS_DAILY_LIMIT }}
+        run: npm run usage:check

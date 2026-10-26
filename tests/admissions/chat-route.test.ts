@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, it } from "node:test";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST } from "../../app/api/admissions/chat/route.ts";
 import { setAuthClientForTests } from "../../lib/admissions/auth.ts";
+import { recordViolation, resetBlocklist } from "../../lib/admissions/blocklist.ts";
 import { recordModelSpend, resetMemoryQuota } from "../../lib/admissions/quota.ts";
 import { getChatProvider, resetChatProvider } from "../../lib/llm/index.ts";
 import type { MockProvider } from "../../lib/llm/providers/mock.ts";
@@ -15,6 +16,7 @@ beforeEach(() => {
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   resetChatProvider();
   resetMemoryQuota();
+  resetBlocklist();
   // Accepts "token-<user id>" as a valid Supabase access token.
   setAuthClientForTests({
     auth: {
@@ -73,7 +75,50 @@ describe("chat route login", () => {
   });
 });
 
+describe("chat route blocklist", () => {
+  it("blocks a user after repeated limit violations", async () => {
+    process.env.ADMISSIONS_USER_DAILY_LIMIT = "1";
+    process.env.ADMISSIONS_BLOCK_THRESHOLD = "2";
+    const question = { question: "What GPA do transfer applicants from out of state need for UC?" };
+
+    assert.equal((await ask(question, { token: "token-spammer" })).status, 200);
+    assert.equal((await ask(question, { token: "token-spammer" })).status, 429);
+    assert.equal((await ask(question, { token: "token-spammer" })).status, 429);
+
+    const blocked = await ask({ question: "UCLA 参加 TAG 吗" }, { token: "token-spammer" });
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.json.code, "BLOCKED");
+    assert.equal((await ask({ question: "UCLA 参加 TAG 吗" }, { token: "token-someone-else" })).status, 200);
+  });
+
+  it("honors blocks recorded directly", async () => {
+    process.env.ADMISSIONS_BLOCK_THRESHOLD = "1";
+    await recordViolation("user:manual");
+    assert.equal((await ask({ question: "UCLA 参加 TAG 吗" }, { token: "token-manual" })).status, 403);
+  });
+});
+
 describe("chat route abuse guards", () => {
+  it("allows only one answer at a time per user", async () => {
+    resetChatProvider();
+    process.env.LLM_PROVIDER = "mock";
+    const slow = getChatProvider() as MockProvider;
+    (slow as unknown as { options: { delayMs: number } }).options.delayMs = 200;
+    const question = { question: "What GPA do transfer applicants from out of state need for UC?" };
+    const [first, second] = await Promise.all([ask(question, { token: "token-parallel" }), new Promise((resolve) => setTimeout(resolve, 50)).then(() => ask(question, { token: "token-parallel" }))]);
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 429);
+    assert.equal(second.json.code, "STREAM_IN_PROGRESS");
+  });
+
+  it("keeps only the last four history turns", async () => {
+    const history = Array.from({ length: 8 }, (_, index) => ({ role: "user", content: `older question ${index}` }));
+    await ask({ question: "What GPA do transfer applicants from out of state need for UC?", history });
+    const sent = mock().calls.at(-1)!.map((message) => message.content).join("\n");
+    assert.ok(sent.includes("older question 7"));
+    assert.ok(!sent.includes("older question 3"));
+  });
+
   it("answers out-of-scope questions without calling the model", async () => {
     const { events } = await ask({ question: "Write a poem about the ocean" });
     assert.equal(events[0].outOfScope, true);
