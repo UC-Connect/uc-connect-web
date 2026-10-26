@@ -97,8 +97,9 @@ The assistant retrieves relevant sections with keyword scoring (with Chinese que
 Environment variables (server-only):
 
 ```env
+LLM_PROVIDER=gemini            # gemini | mock
+LLM_MODEL=                     # optional; defaults to the provider's default model
 GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-flash-lite-latest
 ```
 
 Optional settings for running on the free Gemini tier:

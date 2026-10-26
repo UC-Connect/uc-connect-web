@@ -11,6 +11,8 @@ UC Connect 的重要更新都会记录在这里。
   新增 GitHub Actions CI，覆盖 PR 和 `main`：代码检查、类型检查、单元测试、检索评测阈值和生产构建。
 - Added ESLint with the Next.js config and `lint` / `typecheck` scripts.
   新增 ESLint（Next.js 配置）以及 `lint`、`typecheck` 脚本。
+- Added an LLM provider layer (`lib/llm`) with a shared chat interface, `LLMError`, zod-validated `LLM_*` settings, a mock provider for tests, and the Gemini provider; an ESLint rule keeps vendor SDKs and API URLs inside `lib/llm/providers`.
+  新增 LLM provider 层（`lib/llm`）：统一的对话接口、`LLMError` 错误类型、用 zod 校验的 `LLM_*` 配置、测试用 mock provider 和 Gemini provider；ESLint 规则限制厂商 SDK 和 API 地址只能出现在 `lib/llm/providers`。
 
 ## v0.3.0 - 2026-10-14
 
