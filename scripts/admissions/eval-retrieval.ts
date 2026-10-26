@@ -43,3 +43,12 @@ if (process.argv.includes("--json")) {
     console.log(`  [${label}] #${result.id} ${result.question} -> ${result.retrieved.join(", ") || "(none)"}`);
   }
 }
+
+// CI gate: `--min-matched N` fails the run when fewer than N questions retrieve all expected sources.
+const minIndex = process.argv.indexOf("--min-matched");
+const minMatched = minIndex === -1 ? null : Number(process.argv[minIndex + 1]);
+
+if (minMatched !== null && summary.matched < minMatched) {
+  console.error(`Retrieval regression: ${summary.matched}/${summary.total} matched, expected at least ${minMatched}.`);
+  process.exitCode = 1;
+}
