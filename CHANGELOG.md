@@ -19,10 +19,14 @@ UC Connect 的重要更新都会记录在这里。
   新增 `LLM_FALLBACK_PROVIDER`：主 provider 在开始输出前出现可重试错误时，改由备用 provider 回答。
 - Added per-answer JSON usage logs (provider, model, tokens, latency, estimated cost, cache hit, fallback) and a dated price table.
   新增每次回答的 JSON 用量日志（provider、模型、token、延迟、估算成本、是否命中缓存、是否走了 fallback）以及注明核对日期的价格表。
+- Added `npm run eval:providers` to compare providers on the eval questions (accuracy overall and by language, valid citations, p50/p95 latency, tokens, cost, request failures), writing `eval-results/<date>.md` and `.csv`, plus a manually triggered "Provider eval" GitHub Actions workflow.
+  新增 `npm run eval:providers`，用评测题对比各 provider（总准确率和中英文准确率、引用有效率、p50/p95 延迟、token、成本、请求失败数），输出 `eval-results/<日期>.md` 和 `.csv`；并新增手动触发的 "Provider eval" GitHub Actions workflow。
 
 ### Changed / 调整
 - Answer cache keys and pre-generated answers now include the provider and model, so switching models never serves another model's answers. Re-run `supabase/schema.sql` to add the `provider` column.
   回答缓存 key 和预生成答案加入 provider 和模型，切换模型后不会读到其他模型的旧答案。需重新运行 `supabase/schema.sql` 以新增 `provider` 列。
+- Eval grading ignores Markdown emphasis, so "**not** automatically" matches "not automatically".
+  评测判分忽略 Markdown 强调符号，例如 "**not** automatically" 可以匹配 "not automatically"。
 - Each provider now retries once by default (`LLM_MAX_ATTEMPTS=2`) before failing or falling back.
   每个 provider 默认重试 1 次（`LLM_MAX_ATTEMPTS=2`），之后报错或切换到备用 provider。
 
