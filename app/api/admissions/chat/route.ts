@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { AssistantError, buildMessages, retrieveForConversation, streamAnswer, type AnswerEvent } from "../../../../lib/admissions/assistant.ts";
+import { authenticate } from "../../../../lib/admissions/auth.ts";
 import { findCachedAnswer, findPrebuiltAnswer, storeCachedAnswer } from "../../../../lib/admissions/cache.ts";
 import { estimateTokens, LIMITS, sanitizeHistory, signAnswer } from "../../../../lib/admissions/guards.ts";
 import { answerWithRules } from "../../../../lib/admissions/intents.ts";
@@ -23,6 +24,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   TIMEOUT: "回答超时，请重试，也可以先看下面的相关专题。/ The answer timed out. Try again, or read the related topics below.",
   DAILY_LIMIT: "今天的 AI 额度已用完，明天再来，也可以先看下面的相关专题。/ Today's AI quota is used up. Come back tomorrow, or read the related topics below.",
   CLIENT_LIMIT: "提问太频繁，请稍后再试。/ Too many questions. Please wait a moment.",
+  LOGIN_REQUIRED: "请先登录后再使用 AI 助手。/ Please log in to use the assistant.",
+  STREAM_IN_PROGRESS: "上一个回答还在生成，请稍等。/ Your previous answer is still being written.",
   INPUT_TOO_LONG: "这次对话太长了，请开始新对话再问。/ This conversation is too long; please start a new chat.",
 };
 
@@ -32,6 +35,24 @@ const OUT_OF_SCOPE = {
 };
 
 type Send = (event: object) => void;
+
+// One answer at a time per user on each instance, so a client cannot fan out parallel streams.
+const activeStreams = new Set<string>();
+
+// Browsers send Origin on cross-site requests; reject other sites calling the API from a page.
+function crossSite(request: Request): boolean {
+  const origin = request.headers.get("origin");
+
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    return new URL(origin).host !== (request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
+  } catch {
+    return true;
+  }
+}
 
 // Client IPs are hashed before they are used as rate-limit keys or stored. On Vercel the
 // forwarded-for header is set by the platform and cannot be spoofed by the client.
@@ -81,12 +102,25 @@ function costInCny(provider: string | undefined, model: string | undefined, usag
 }
 
 export async function POST(request: Request) {
+  if (crossSite(request)) {
+    return Response.json({ error: "Cross-site requests are not allowed." }, { status: 403 });
+  }
+
   const client = clientKey(request);
   const burst = checkRateLimit(client);
 
   if (!burst.allowed) {
     return Response.json({ error: ERROR_MESSAGES.CLIENT_LIMIT }, { status: 429, headers: { "Retry-After": String(burst.retryAfterSeconds) } });
   }
+
+  // The assistant is for signed-in users only, including rule and cached answers.
+  const auth = await authenticate(request);
+
+  if (!auth.ok) {
+    return Response.json({ error: ERROR_MESSAGES.LOGIN_REQUIRED, code: "LOGIN_REQUIRED" }, { status: 401 });
+  }
+
+  const userId = auth.user?.id ?? null;
 
   let body: { question?: unknown; history?: unknown; audience?: unknown };
 
@@ -149,7 +183,13 @@ export async function POST(request: Request) {
     return Response.json({ error: ERROR_MESSAGES.INPUT_TOO_LONG, code: "INPUT_TOO_LONG" }, { status: 413 });
   }
 
-  const quota = await consumeModelQuota(client);
+  const streamKey = userId ?? client;
+
+  if (activeStreams.has(streamKey)) {
+    return Response.json({ error: ERROR_MESSAGES.STREAM_IN_PROGRESS, code: "STREAM_IN_PROGRESS" }, { status: 429 });
+  }
+
+  const quota = await consumeModelQuota({ clientKey: client, userId });
 
   if (!quota.allowed) {
     if (quota.reason === "client") {
@@ -159,6 +199,8 @@ export async function POST(request: Request) {
     // Still point the user to the relevant topic pages when the daily quota or budget is used up.
     return sendNotice(retrieval.sources, retrieval.audience, "DAILY_LIMIT");
   }
+
+  activeStreams.add(streamKey);
 
   return streamResponse(async (send) => {
     let meta: Extract<AnswerEvent, { type: "meta" }> | undefined;
@@ -192,6 +234,8 @@ export async function POST(request: Request) {
         console.error("[admissions-chat]", code, error instanceof Error ? error.message : error);
         send({ type: "error", code, message: ERROR_MESSAGES[code] ?? "暂时无法回答，请稍后再试。/ Unable to answer right now." });
       }
+    } finally {
+      activeStreams.delete(streamKey);
     }
   });
 }

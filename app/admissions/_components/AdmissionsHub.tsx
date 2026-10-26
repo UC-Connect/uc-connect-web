@@ -97,7 +97,7 @@ export function AdmissionsHub({ docs, timelines }: AdmissionsHubProps) {
             </div>
             <p className="adm-ask-foot">
               <span className="adm-dot" />
-              {L("只根据官方资料回答，并标出每句话的出处", "Answers only from official sources, with a citation for each claim")}
+              {L("只根据官方资料回答，并标出每句话的出处 · 登录后可用", "Answers only from official sources, with citations · requires login")}
             </p>
           </form>
         </div>

@@ -4,11 +4,21 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { RetrievedSource } from "@/lib/admissions/retriever";
 import { AUDIENCE_LABELS, SUGGESTED_QUESTIONS, type ApplicantType } from "@/lib/admissions/presentation";
+import { supabase } from "@/lib/supabase";
 import { readAudienceParam } from "./AudienceSwitch";
 import { useLang } from "./LangProvider";
 import { Markdown } from "./Markdown";
 
 type Status = "searching" | "streaming" | "done" | "stopped" | "error";
+type AuthState = "checking" | "signed-in" | "signed-out";
+
+// The assistant requires a login; the session lives in the browser, and its access token is sent
+// with each question.
+async function accessToken(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+}
 
 type Message = {
   id: string;
@@ -62,6 +72,9 @@ export function AskChat() {
   const logEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const startedRef = useRef(false);
+  const pendingQuestionRef = useRef<{ question: string; audience: ApplicantType | null } | null>(null);
+  const [authState, setAuthState] = useState<AuthState>("checking");
+  const [returnPath, setReturnPath] = useState("/admissions/ask");
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -84,14 +97,31 @@ export function AskChat() {
     const question = params.get("q")?.trim();
 
     setMessages(restored);
+    setReturnPath(`${window.location.pathname}${window.location.search}`);
     if (initialAudience) setAudience(initialAudience);
+    if (question) pendingQuestionRef.current = { question: question.slice(0, MAX_QUESTION_LENGTH), audience: initialAudience };
 
-    if (question) {
-      window.history.replaceState(null, "", `/admissions/ask${initialAudience ? `?for=${initialAudience}` : ""}`);
-      void send(question.slice(0, MAX_QUESTION_LENGTH), restored, initialAudience);
+    if (!supabase) {
+      setAuthState("signed-out");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    void accessToken().then((token) => setAuthState(token ? "signed-in" : "signed-out"));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setAuthState(session ? "signed-in" : "signed-out"));
+    return () => listener.subscription.unsubscribe();
   }, []);
+
+  // A question passed in the URL (from the hub) is asked once the user is signed in.
+  useEffect(() => {
+    const pending = pendingQuestionRef.current;
+
+    if (authState !== "signed-in" || !pending) return;
+
+    pendingQuestionRef.current = null;
+    window.history.replaceState(null, "", `/admissions/ask${pending.audience ? `?for=${pending.audience}` : ""}`);
+    void send(pending.question, messages, pending.audience);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authState]);
 
   useEffect(() => {
     try {
@@ -125,15 +155,23 @@ export function AskChat() {
     ]);
 
     try {
+      const token = await accessToken();
+
+      if (!token) {
+        setAuthState("signed-out");
+        throw new Error(L("请先登录后再使用 AI 助手。", "Please log in to use the assistant."));
+      }
+
       const response = await fetch("/api/admissions/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ question, history, audience: audienceOverride }),
         signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
         const payload = await response.json().catch(() => ({}));
+        if (response.status === 401) setAuthState("signed-out");
         throw new Error(payload.error || L("暂时无法回答，请稍后再试。", "Unable to answer right now."));
       }
 
@@ -233,66 +271,87 @@ export function AskChat() {
         </div>
       </div>
 
-      <div className="adm-chat-log" aria-live="polite">
-        {messages.length === 0 && (
-          <div className="adm-empty">
-            <span className="brand-mark"><i /><i /><i /></span>
-            <h2>{L("想了解 UC 申请的什么？", "What would you like to know about applying to UC?")}</h2>
-            <p>{L("可以用中文或英文提问。涉及个人录取机会、课程对等的具体判断，我会提示你去查官方渠道。", "Ask in English or Chinese. For personal admission chances or course-by-course articulation, I'll point you to official tools.")}</p>
-            <div className="adm-suggest-grid">
-              {suggestionGroups.map((group) => (
-                <div key={group}>
-                  <h3>{pick(AUDIENCE_LABELS[group])}</h3>
-                  {SUGGESTED_QUESTIONS[group].map((item) => (
-                    <button key={item.en} type="button" onClick={() => void send(pick(item), messages, audience ?? group)}>
-                      {pick(item)}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
+      {authState === "signed-out" && (
+        <div className="adm-login-gate">
+          <span className="brand-mark"><i /><i /><i /></span>
+          <h2>{L("登录后使用 AI 助手", "Log in to use the assistant")}</h2>
+          <p>
+            {L(
+              "AI 助手只对登录用户开放，注册免费，任意邮箱都可以。申请信息专题和计算工具无需登录。",
+              "The assistant is available to signed-in users. Signing up is free with any email. Topic pages and calculators work without an account."
+            )}
+          </p>
+          <div className="adm-login-actions">
+            <a className="primary-button" href={`/?login=1&next=${encodeURIComponent(returnPath)}`}>{L("登录 / 注册", "Log in / Sign up")}</a>
+            <Link href="/admissions/tools" className="adm-link-button">{L("先用计算工具", "Use the calculators")}</Link>
           </div>
-        )}
-
-        {messages.map((message) =>
-          message.role === "user" ? (
-            <div key={message.id} className="adm-msg user">
-              <p>{message.content}</p>
-            </div>
-          ) : (
-            <AssistantMessage key={message.id} message={message} />
-          )
-        )}
-        <div ref={logEndRef} />
-      </div>
-
-      <form className="adm-composer" onSubmit={submit}>
-        <div className="adm-composer-box">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder={L("输入你的问题…", "Ask a question…")}
-            maxLength={MAX_QUESTION_LENGTH}
-            rows={1}
-            aria-label={L("你的问题", "Your question")}
-          />
-          {busy ? (
-            <button type="button" className="adm-stop" onClick={() => abortRef.current?.abort()}>
-              {L("停止", "Stop")}
-            </button>
-          ) : (
-            <button type="submit" className="primary-button small" disabled={!input.trim()}>
-              {L("发送", "Send")}
-            </button>
-          )}
         </div>
-        <p className="adm-composer-note">
-          {L("AI 可能出错，重要信息请点开来源核对。UC Connect 与加州大学无官方关联。", "AI can make mistakes; check the cited sources for anything important. UC Connect is not affiliated with the University of California.")}
-          {input.length > MAX_QUESTION_LENGTH * 0.8 && <span> {input.length}/{MAX_QUESTION_LENGTH}</span>}
-        </p>
-      </form>
+      )}
+
+      {authState === "signed-in" && (
+        <>
+      <div className="adm-chat-log" aria-live="polite">
+          {messages.length === 0 && (
+            <div className="adm-empty">
+              <span className="brand-mark"><i /><i /><i /></span>
+              <h2>{L("想了解 UC 申请的什么？", "What would you like to know about applying to UC?")}</h2>
+              <p>{L("可以用中文或英文提问。涉及个人录取机会、课程对等的具体判断，我会提示你去查官方渠道。", "Ask in English or Chinese. For personal admission chances or course-by-course articulation, I'll point you to official tools.")}</p>
+              <div className="adm-suggest-grid">
+                {suggestionGroups.map((group) => (
+                  <div key={group}>
+                    <h3>{pick(AUDIENCE_LABELS[group])}</h3>
+                    {SUGGESTED_QUESTIONS[group].map((item) => (
+                      <button key={item.en} type="button" onClick={() => void send(pick(item), messages, audience ?? group)}>
+                        {pick(item)}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+  
+          {messages.map((message) =>
+            message.role === "user" ? (
+              <div key={message.id} className="adm-msg user">
+                <p>{message.content}</p>
+              </div>
+            ) : (
+              <AssistantMessage key={message.id} message={message} />
+            )
+          )}
+          <div ref={logEndRef} />
+        </div>
+  
+        <form className="adm-composer" onSubmit={submit}>
+          <div className="adm-composer-box">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder={L("输入你的问题…", "Ask a question…")}
+              maxLength={MAX_QUESTION_LENGTH}
+              rows={1}
+              aria-label={L("你的问题", "Your question")}
+            />
+            {busy ? (
+              <button type="button" className="adm-stop" onClick={() => abortRef.current?.abort()}>
+                {L("停止", "Stop")}
+              </button>
+            ) : (
+              <button type="submit" className="primary-button small" disabled={!input.trim()}>
+                {L("发送", "Send")}
+              </button>
+            )}
+          </div>
+          <p className="adm-composer-note">
+            {L("AI 可能出错，重要信息请点开来源核对。UC Connect 与加州大学无官方关联。", "AI can make mistakes; check the cited sources for anything important. UC Connect is not affiliated with the University of California.")}
+            {input.length > MAX_QUESTION_LENGTH * 0.8 && <span> {input.length}/{MAX_QUESTION_LENGTH}</span>}
+          </p>
+        </form>
+        </>
+      )}
     </div>
   );
 }

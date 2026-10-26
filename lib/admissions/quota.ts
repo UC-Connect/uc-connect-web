@@ -6,6 +6,7 @@ export type QuotaResult = { allowed: true } | { allowed: false; reason: "client"
 const DAY_SECONDS = 24 * 60 * 60;
 const DEFAULT_DAILY_LIMIT = 400;
 const DEFAULT_DAILY_BUDGET_CNY = 5;
+const DEFAULT_USER_DAILY_LIMIT = 50;
 const SPEND_BUCKET = "spend:global:day";
 const MICRO = 1_000_000;
 
@@ -41,25 +42,36 @@ function rollMemoryDay() {
   }
 }
 
-function memoryQuota(clientKey: string): QuotaResult {
+export type QuotaSubject = { clientKey: string; userId?: string | null };
+
+function userDailyLimit(): number {
+  return parsePositive(process.env.ADMISSIONS_USER_DAILY_LIMIT, DEFAULT_USER_DAILY_LIMIT);
+}
+
+function memoryQuota({ clientKey, userId }: QuotaSubject): QuotaResult {
   rollMemoryDay();
 
   if (memorySpend.microCny >= dailyBudgetMicroCny()) return { allowed: false, reason: "budget" };
   if (memorySpend.calls >= FALLBACK_INSTANCE_DAILY_CALLS) return { allowed: false, reason: "daily" };
   if (!checkRateLimit(`fallback:${clientKey}`, Date.now(), FALLBACK_CLIENT_WINDOWS).allowed) return { allowed: false, reason: "client" };
+  if (userId && !checkRateLimit(`fallback-user:${userId}`, Date.now(), [...FALLBACK_CLIENT_WINDOWS, { limit: userDailyLimit(), ms: DAY_SECONDS * 1000 }]).allowed) {
+    return { allowed: false, reason: "client" };
+  }
 
   memorySpend.calls += 1;
   return { allowed: true };
 }
 
-// Shared limits across all serverless instances: per-client minute/hour/day windows, a site-wide
-// daily call cap, and a site-wide daily spend budget (ADMISSIONS_DAILY_BUDGET_CNY). Falls back to
-// stricter per-instance limits when Supabase is not configured or fails.
-export async function consumeModelQuota(clientKey: string, extraBuckets: { bucket: string; windowSeconds: number; limit: number }[] = []): Promise<QuotaResult> {
+// Shared limits across all serverless instances: per-IP and per-user minute/hour windows, a per-user
+// daily cap (ADMISSIONS_USER_DAILY_LIMIT, default 50), a site-wide daily call cap, and a site-wide
+// daily spend budget (ADMISSIONS_DAILY_BUDGET_CNY). Falls back to stricter per-instance limits when
+// Supabase is not configured or fails.
+export async function consumeModelQuota(subject: QuotaSubject): Promise<QuotaResult> {
   const supabase = getSupabaseAdmin();
+  const { clientKey, userId } = subject;
 
   if (!supabase) {
-    return memoryQuota(clientKey);
+    return memoryQuota(subject);
   }
 
   const dailyLimit = parsePositive(process.env.ADMISSIONS_DAILY_LIMIT, DEFAULT_DAILY_LIMIT);
@@ -73,7 +85,12 @@ export async function consumeModelQuota(clientKey: string, extraBuckets: { bucke
     const buckets = [
       { bucket: `client:${clientKey}:minute`, windowSeconds: 60, limit: 6 },
       { bucket: `client:${clientKey}:hour`, windowSeconds: 60 * 60, limit: 40 },
-      ...extraBuckets,
+      ...(userId
+        ? [
+            { bucket: `user:${userId}:minute`, windowSeconds: 60, limit: 6 },
+            { bucket: `user:${userId}:day`, windowSeconds: DAY_SECONDS, limit: userDailyLimit() },
+          ]
+        : []),
       { bucket: "global:day", windowSeconds: DAY_SECONDS, limit: dailyLimit },
     ];
     const { data, error } = await supabase.rpc("admissions_consume_quota", {
@@ -87,7 +104,7 @@ export async function consumeModelQuota(clientKey: string, extraBuckets: { bucke
     return { allowed: false, reason: data === "global:day" ? "daily" : "client" };
   } catch (error) {
     console.error("[admissions-quota] Supabase check failed; using per-instance limits", error instanceof Error ? error.message : error);
-    return memoryQuota(clientKey);
+    return memoryQuota(subject);
   }
 }
 

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { POST } from "../../app/api/admissions/chat/route.ts";
+import { setAuthClientForTests } from "../../lib/admissions/auth.ts";
 import { recordModelSpend, resetMemoryQuota } from "../../lib/admissions/quota.ts";
 import { getChatProvider, resetChatProvider } from "../../lib/llm/index.ts";
 import type { MockProvider } from "../../lib/llm/providers/mock.ts";
@@ -13,28 +15,63 @@ beforeEach(() => {
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   resetChatProvider();
   resetMemoryQuota();
+  // Accepts "token-<user id>" as a valid Supabase access token.
+  setAuthClientForTests({
+    auth: {
+      getUser: async (token: string) =>
+        token.startsWith("token-") ? { data: { user: { id: token.slice(6), email: "student@example.com" } }, error: null } : { data: { user: null }, error: { message: "invalid JWT" } },
+    },
+  } as unknown as SupabaseClient);
 });
 
 afterEach(() => {
   process.env = { ...saved };
   resetChatProvider();
+  setAuthClientForTests(undefined);
 });
 
 function mock(): MockProvider {
   return getChatProvider() as MockProvider;
 }
 
-async function ask(body: unknown) {
+async function ask(body: unknown, options: { token?: string | null; origin?: string } = {}) {
   ipCounter += 1;
-  const response = await POST(new Request("http://localhost/api/admissions/chat", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": `10.0.0.${ipCounter}` },
-    body: JSON.stringify(body),
-  }));
+  const token = options.token === undefined ? `token-user-${ipCounter}` : options.token;
+  const headers: Record<string, string> = { "content-type": "application/json", "x-forwarded-for": `10.0.0.${ipCounter}`, host: "localhost" };
+  if (token) headers.authorization = `Bearer ${token}`;
+  if (options.origin) headers.origin = options.origin;
+  const response = await POST(new Request("http://localhost/api/admissions/chat", { method: "POST", headers, body: JSON.stringify(body) }));
   const text = await response.text();
   const events = response.headers.get("content-type")?.includes("ndjson") ? text.trim().split("\n").map((line) => JSON.parse(line)) : [];
   return { status: response.status, events, json: events.length ? null : JSON.parse(text || "{}") };
 }
+
+describe("chat route login", () => {
+  it("refuses requests without a login, including rule answers", async () => {
+    const anonymous = await ask({ question: "UCLA 参加 TAG 吗" }, { token: null });
+    assert.equal(anonymous.status, 401);
+    assert.equal(anonymous.json.code, "LOGIN_REQUIRED");
+
+    const forged = await ask({ question: "What GPA do transfer applicants from out of state need for UC?" }, { token: "made-up" });
+    assert.equal(forged.status, 401);
+    assert.equal(mock().calls.length, 0);
+  });
+
+  it("rejects cross-site browser requests", async () => {
+    const { status } = await ask({ question: "UCLA 参加 TAG 吗" }, { origin: "https://evil.example" });
+    assert.equal(status, 403);
+    assert.equal((await ask({ question: "UCLA 参加 TAG 吗" }, { origin: "http://localhost" })).status, 200);
+  });
+
+  it("caps model calls per user per day across IPs", async () => {
+    process.env.ADMISSIONS_USER_DAILY_LIMIT = "1";
+    const question = { question: "What GPA do transfer applicants from out of state need for UC?" };
+    assert.equal((await ask(question, { token: "token-capped" })).status, 200);
+    const second = await ask(question, { token: "token-capped" });
+    assert.equal(second.status, 429);
+    assert.equal(mock().calls.length, 1);
+  });
+});
 
 describe("chat route abuse guards", () => {
   it("answers out-of-scope questions without calling the model", async () => {
