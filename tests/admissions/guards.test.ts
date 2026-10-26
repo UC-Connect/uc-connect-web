@@ -60,20 +60,28 @@ describe("sanitizeHistory", () => {
 });
 
 describe("per-instance quota fallback (no Supabase)", () => {
+  it("applies the per-user daily cap across IPs", async () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    process.env.ADMISSIONS_USER_DAILY_LIMIT = "2";
+    const results = [];
+    for (const ip of ["ip-1", "ip-2", "ip-3"]) results.push(await consumeModelQuota({ clientKey: ip, userId: "user-cap" }));
+    assert.deepEqual(results.map((result) => result.allowed), [true, true, false]);
+  });
+
   it("limits each client to 3 model calls per minute", async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     const results = [];
-    for (let index = 0; index < 4; index += 1) results.push(await consumeModelQuota("client-a"));
+    for (let index = 0; index < 4; index += 1) results.push(await consumeModelQuota({ clientKey: "client-a" }));
     assert.deepEqual(results.map((result) => result.allowed), [true, true, true, false]);
-    assert.equal((await consumeModelQuota("client-b")).allowed, true);
+    assert.equal((await consumeModelQuota({ clientKey: "client-b" })).allowed, true);
   });
 
   it("stops model calls once the daily budget is spent", async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     process.env.ADMISSIONS_DAILY_BUDGET_CNY = "0.05";
     await recordModelSpend(0.03);
-    assert.equal((await consumeModelQuota("client-c")).allowed, true);
+    assert.equal((await consumeModelQuota({ clientKey: "client-c" })).allowed, true);
     await recordModelSpend(0.03);
-    assert.deepEqual(await consumeModelQuota("client-d"), { allowed: false, reason: "budget" });
+    assert.deepEqual(await consumeModelQuota({ clientKey: "client-d" }), { allowed: false, reason: "budget" });
   });
 });

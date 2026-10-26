@@ -312,3 +312,11 @@
   .adm-ag-row > :nth-child(2) { display:none; }
   .adm-campus-grid { grid-template-columns:1fr 1fr; }
 }
+
+/* Login gate on the assistant page */
+.adm-login-gate { margin:40px auto; max-width:520px; text-align:center; padding:32px 24px; background:#fff; border:1px solid #e0e6ed; border-radius:10px; }
+.adm-login-gate .brand-mark { display:inline-flex; width:38px; height:38px; padding:9px 8px; }
+.adm-login-gate h2 { margin:16px 0 8px; font-size:20px; color:var(--navy); }
+.adm-login-gate p { margin:0 auto; max-width:420px; font-size:14px; line-height:1.65; color:var(--muted); }
+.adm-login-actions { display:flex; justify-content:center; align-items:center; gap:16px; margin-top:22px; flex-wrap:wrap; }
+.adm-login-actions .primary-button { text-decoration:none; }

@@ -26,6 +26,8 @@ UC Connect 的重要更新都会记录在这里。
 
 - Added abuse and cost guards for the admissions assistant: signed follow-up context, a daily spend budget (`ADMISSIONS_DAILY_BUDGET_CNY`, default ¥5) tracked in Supabase, a kill switch (`ADMISSIONS_AI_ENABLED`), and an estimated prompt-size check before every model call.
   新增 AI 助手防滥用和成本保护：追问上下文需服务端签名、Supabase 记录的每日花费预算（`ADMISSIONS_DAILY_BUDGET_CNY`，默认 ¥5）、总开关（`ADMISSIONS_AI_ENABLED`），以及每次调用模型前的提示词长度估算。
+- The admissions assistant now requires login: the API verifies the Supabase access token, each user gets 50 model calls per day (`ADMISSIONS_USER_DAILY_LIMIT`) and one answer at a time, and cross-site browser requests are rejected. Signed-out visitors see a login prompt that returns them to their question; topic pages and calculators stay public.
+  AI 助手改为登录后才能使用：API 校验 Supabase 登录令牌，每个用户每天最多 50 次模型调用（`ADMISSIONS_USER_DAILY_LIMIT`），同时只能生成一个回答，并拒绝跨站浏览器请求。未登录用户会看到登录提示，登录后自动回到原来的问题；专题页面和计算工具仍然公开。
 - Questions with no matching sources now get a fixed "UC admissions only" reply without a model call.
   检索不到任何资料的问题直接回复"只回答 UC 申请问题"，不再调用模型。
 

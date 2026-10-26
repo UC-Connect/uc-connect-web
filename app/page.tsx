@@ -666,7 +666,12 @@ export default function Home() {
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    // /?login=1&next=/admissions/... opens the login modal and returns to the admissions page after login.
+    const wantsLogin = new URLSearchParams(window.location.search).get("login") === "1";
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (wantsLogin && (!data.user || !returnAfterLogin())) setShowLogin(true);
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
@@ -1198,6 +1203,18 @@ export default function Home() {
     flash("联系方式已保存");
   }
 
+  // Only same-site admissions paths are allowed, so the parameter cannot redirect anywhere else.
+  function returnAfterLogin() {
+    const next = new URLSearchParams(window.location.search).get("next");
+
+    if (!next || !next.startsWith("/admissions") || next.startsWith("//")) {
+      return false;
+    }
+
+    window.location.assign(next);
+    return true;
+  }
+
   async function signInWithPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1223,6 +1240,7 @@ export default function Home() {
       const { data } = await supabase.auth.getUser();
       setUser(data.user);
       setShowLogin(false);
+      if (returnAfterLogin()) return;
       flash("登录成功");
       return;
     }
@@ -1257,6 +1275,7 @@ export default function Home() {
     if (signUpData.session) {
       setUser(signUpData.user);
       setShowLogin(false);
+      if (returnAfterLogin()) return;
       flash("账号已创建并登录成功");
       return;
     }
@@ -1274,6 +1293,7 @@ export default function Home() {
     const { data } = await supabase.auth.getUser();
     setUser(data.user);
     setShowLogin(false);
+    if (returnAfterLogin()) return;
     flash("注册并登录成功");
   }
 
