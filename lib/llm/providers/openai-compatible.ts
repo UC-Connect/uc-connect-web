@@ -110,6 +110,10 @@ export class OpenAICompatibleProvider implements ChatProvider {
     if (error instanceof APIConnectionTimeoutError) {
       return new LLMError(this.name, "timeout", `${this.name} request timed out after ${this.options.timeoutMs} ms.`, { cause: error });
     }
+    // OpenAI reports an empty prepaid balance as 429 with code insufficient_quota; it is not a rate limit.
+    if (error instanceof APIError && error.code === "insufficient_quota") {
+      return new LLMError(this.name, "quota", `${this.name} account has no remaining credits.`, { status: error.status, cause: error });
+    }
     if (error instanceof APIError && typeof error.status === "number") {
       const converted = errorFromStatus(this.name, error.status, error.message);
       return new LLMError(converted.provider, converted.kind, converted.message, { status: converted.status, retryable: converted.retryable, cause: error });

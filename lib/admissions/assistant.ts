@@ -9,7 +9,7 @@ export type AnswerEvent =
   | { type: "delta"; text: string }
   | ({ type: "done" } & Partial<Omit<ChatResult, "text">>);
 
-export type AssistantErrorCode = "MISSING_API_KEY" | "UPSTREAM_BUSY" | "UPSTREAM_FAILED" | "TIMEOUT" | "EMPTY_ANSWER";
+export type AssistantErrorCode = "MISSING_API_KEY" | "QUOTA_EXHAUSTED" | "UPSTREAM_BUSY" | "UPSTREAM_FAILED" | "TIMEOUT" | "EMPTY_ANSWER";
 
 export class AssistantError extends Error {
   code: AssistantErrorCode;
@@ -72,6 +72,7 @@ function buildContext(retrieval: Retrieval): string {
 
 const ERROR_CODES: Record<LLMErrorKind, AssistantErrorCode> = {
   config: "MISSING_API_KEY",
+  quota: "QUOTA_EXHAUSTED",
   rate_limit: "UPSTREAM_BUSY",
   timeout: "TIMEOUT",
   empty: "EMPTY_ANSWER",

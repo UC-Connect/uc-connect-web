@@ -21,8 +21,14 @@ UC Connect 的重要更新都会记录在这里。
   新增每次回答的 JSON 用量日志（provider、模型、token、延迟、估算成本、是否命中缓存、是否走了 fallback）以及注明核对日期的价格表。
 - Added `npm run eval:providers` to compare providers on the eval questions (accuracy overall and by language, valid citations, p50/p95 latency, tokens, cost, request failures), writing `eval-results/<date>.md` and `.csv`, plus a manually triggered "Provider eval" GitHub Actions workflow.
   新增 `npm run eval:providers`，用评测题对比各 provider（总准确率和中英文准确率、引用有效率、p50/p95 延迟、token、成本、请求失败数），输出 `eval-results/<日期>.md` 和 `.csv`；并新增手动触发的 "Provider eval" GitHub Actions workflow。
+- Added the first provider comparison (`eval-results/2026-10-26.md`): DeepSeek, Gemini, gpt-6-luna, and gpt-5.4-nano, plus README sections on architecture, switching models, and adding a provider.
+  新增第一份 provider 对比报告（`eval-results/2026-10-26.md`）：DeepSeek、Gemini、gpt-6-luna、gpt-5.4-nano；README 补充架构说明、切换模型和新增 provider 的方法。
 
 ### Changed / 调整
+- The default chat model is now DeepSeek `deepseek-flash`, with Gemini recommended as `LLM_FALLBACK_PROVIDER`; suggested-question answers were regenerated with DeepSeek.
+  默认对话模型改为 DeepSeek `deepseek-flash`，建议将 Gemini 设为 `LLM_FALLBACK_PROVIDER`；推荐问题的预生成答案已用 DeepSeek 重新生成。
+- Out-of-credit errors (DeepSeek 402, OpenAI `insufficient_quota`) are reported as non-retryable quota errors instead of rate limits.
+  余额不足错误（DeepSeek 402、OpenAI `insufficient_quota`）改为不可重试的额度错误，不再被当作限流。
 - Answer cache keys and pre-generated answers now include the provider and model, so switching models never serves another model's answers. Re-run `supabase/schema.sql` to add the `provider` column.
   回答缓存 key 和预生成答案加入 provider 和模型，切换模型后不会读到其他模型的旧答案。需重新运行 `supabase/schema.sql` 以新增 `provider` 列。
 - Eval grading ignores Markdown emphasis, so "**not** automatically" matches "not automatically".

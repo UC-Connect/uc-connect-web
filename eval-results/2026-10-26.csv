@@ -1,0 +1,5 @@
+label,total,passed,accuracy,accuracyZh,accuracyEn,citationRate,p50Ms,p95Ms,avgInputTokens,avgOutputTokens,totalCost,currency,totalUsd,requestFailures
+"deepseek:deepseek-flash",52,45,0.865385,1,0.840909,1,1534,2533,1505.288462,199.769231,0.173422,"CNY",0.024426,0
+"gemini:gemini-flash-lite-latest",52,43,0.826923,1,0.795455,0.959184,895,2142,1617.269231,119.076923,0.040709,"USD",0.040709,0
+"openai:gpt-6-luna",52,43,0.826923,1,0.795455,1,1422,2780,1494.846154,85.346154,0.00987,"USD",0.00987,0
+"openai:gpt-5.4-nano",52,43,0.826923,1,0.795455,1,1554,3063,1494.846154,161.788462,0.026063,"USD",0.026063,0

@@ -8,9 +8,9 @@ import { OpenAICompatibleProvider } from "../../lib/llm/providers/openai-compati
 import { MockProvider } from "../../lib/llm/providers/mock.ts";
 
 describe("loadLLMConfig", () => {
-  it("defaults to Gemini and its default model", () => {
-    const config = loadLLMConfig({ GEMINI_API_KEY: "key" });
-    assert.deepEqual(config.primary, { provider: "gemini", model: "gemini-flash-lite-latest", apiKey: "key" });
+  it("defaults to DeepSeek and its default model", () => {
+    const config = loadLLMConfig({ DEEPSEEK_API_KEY: "key" });
+    assert.deepEqual(config.primary, { provider: "deepseek", model: "deepseek-flash", apiKey: "key" });
     assert.equal(config.fallback, null);
     assert.equal(config.timeoutMs, 60000);
     assert.equal(config.maxOutputTokens, 800);
@@ -40,14 +40,15 @@ describe("loadLLMConfig", () => {
   });
 
   it("treats empty strings as unset", () => {
-    const config = loadLLMConfig({ LLM_PROVIDER: "", LLM_MODEL: "", GEMINI_API_KEY: "key", LLM_FALLBACK_PROVIDER: "" });
-    assert.equal(config.primary.provider, "gemini");
+    const config = loadLLMConfig({ LLM_PROVIDER: "", LLM_MODEL: "", DEEPSEEK_API_KEY: "key", LLM_FALLBACK_PROVIDER: "" });
+    assert.equal(config.primary.provider, "deepseek");
     assert.equal(config.fallback, null);
   });
 
   it("honors LLM_MODEL over the legacy GEMINI_MODEL", () => {
-    assert.equal(loadLLMConfig({ GEMINI_API_KEY: "key", GEMINI_MODEL: "legacy" }).primary.model, "legacy");
-    assert.equal(loadLLMConfig({ GEMINI_API_KEY: "key", GEMINI_MODEL: "legacy", LLM_MODEL: "new" }).primary.model, "new");
+    const gemini = { LLM_PROVIDER: "gemini", GEMINI_API_KEY: "key", GEMINI_MODEL: "legacy" };
+    assert.equal(loadLLMConfig(gemini).primary.model, "legacy");
+    assert.equal(loadLLMConfig({ ...gemini, LLM_MODEL: "new" }).primary.model, "new");
   });
 
   it("validates numeric settings", () => {

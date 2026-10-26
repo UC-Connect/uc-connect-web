@@ -1,4 +1,4 @@
-export type LLMErrorKind = "config" | "rate_limit" | "timeout" | "upstream" | "empty" | "aborted";
+export type LLMErrorKind = "config" | "quota" | "rate_limit" | "timeout" | "upstream" | "empty" | "aborted";
 
 const RETRYABLE_KINDS = new Set<LLMErrorKind>(["rate_limit", "timeout", "upstream"]);
 
@@ -23,6 +23,8 @@ export class LLMError extends Error {
 export function errorFromStatus(provider: string, status: number, detail = ""): LLMError {
   const message = `${provider} request failed with status ${status}${detail ? `: ${detail}` : ""}`;
 
+  // Out of credits (DeepSeek 402): retrying or waiting will not help.
+  if (status === 402) return new LLMError(provider, "quota", message, { status });
   if (status === 429) return new LLMError(provider, "rate_limit", message, { status });
   if (status === 401 || status === 403) return new LLMError(provider, "config", message, { status, retryable: false });
   if (status >= 500) return new LLMError(provider, "upstream", message, { status });
