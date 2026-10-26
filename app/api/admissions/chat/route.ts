@@ -15,6 +15,7 @@ const MAX_TURN_LENGTH = 6000;
 
 const ERROR_MESSAGES: Record<string, string> = {
   MISSING_API_KEY: "AI 助手暂未配置。/ The assistant is not configured yet.",
+  QUOTA_EXHAUSTED: "AI 服务暂时不可用，请稍后再试，也可以先看下面的相关专题。/ The AI service is temporarily unavailable. Try again later, or read the related topics below.",
   UPSTREAM_BUSY: "AI 服务繁忙，请稍后再试，也可以先看下面的相关专题。/ The AI service is busy. Try again shortly, or read the related topics below.",
   TIMEOUT: "回答超时，请重试，也可以先看下面的相关专题。/ The answer timed out. Try again, or read the related topics below.",
   DAILY_LIMIT: "今天的免费 AI 额度已用完，明天再来，也可以先看下面的相关专题。/ Today's free AI quota is used up. Come back tomorrow, or read the related topics below.",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { answerCacheKey, findPrebuiltAnswer } from "../../lib/admissions/cache.ts";
+import { answerCacheKey, findPrebuiltAnswer, readPrebuiltFile } from "../../lib/admissions/cache.ts";
 import { LLMError } from "../../lib/llm/errors.ts";
 import { FallbackChatProvider } from "../../lib/llm/fallback.ts";
 import { getChatProvider, getModelIdentity, resetChatProvider } from "../../lib/llm/index.ts";
@@ -90,8 +90,10 @@ describe("answer caching by model", () => {
 
   it("serves pre-generated answers only to the model that generated them", () => {
     const question = "How is the UC GPA calculated?";
-    assert.ok(findPrebuiltAnswer(question, { provider: "gemini", model: "gemini-flash-lite-latest" }));
-    assert.equal(findPrebuiltAnswer(question, { provider: "deepseek", model: "deepseek-flash" }), null);
+    const file = readPrebuiltFile();
+    assert.ok(file);
+    assert.ok(findPrebuiltAnswer(question, { provider: file.provider, model: file.model }));
+    assert.equal(findPrebuiltAnswer(question, { provider: file.provider, model: `${file.model}-other` }), null);
     // Without a usable model configuration the stored answers are still served.
     assert.ok(findPrebuiltAnswer(question, null));
   });

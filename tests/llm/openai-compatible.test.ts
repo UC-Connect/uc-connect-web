@@ -67,6 +67,14 @@ describe("OpenAI-compatible provider", () => {
     await assert.rejects(unauthorized.chat(messages), (error: unknown) => error instanceof LLMError && error.kind === "config" && !error.retryable);
   });
 
+  it("treats an empty balance as a non-retryable quota error", async () => {
+    const noCredits = provider("openai", stub(() => new Response(JSON.stringify({ error: { message: "You have no credits remaining.", type: "insufficient_quota", code: "insufficient_quota" } }), { status: 429 })).fetchImpl, "gpt-6-luna");
+    await assert.rejects(noCredits.chat(messages), (error: unknown) => error instanceof LLMError && error.kind === "quota" && !error.retryable);
+
+    const insufficient = provider("deepseek", stub(() => new Response(JSON.stringify({ error: { message: "Insufficient Balance" } }), { status: 402 })).fetchImpl, "deepseek-flash");
+    await assert.rejects(insufficient.chat(messages), (error: unknown) => error instanceof LLMError && error.kind === "quota" && !error.retryable);
+  });
+
   it("treats a stream without text as empty", async () => {
     const empty = provider("deepseek", stub(sse(chunk(null, { prompt_tokens: 1, completion_tokens: 0 }))).fetchImpl, "deepseek-flash");
     await assert.rejects(empty.chat(messages), (error: unknown) => error instanceof LLMError && error.kind === "empty");

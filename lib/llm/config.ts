@@ -37,7 +37,7 @@ const optionalString = z.preprocess((value) => (typeof value === "string" && val
 const providerName = z.enum(PROVIDER_NAMES);
 
 const envSchema = z.object({
-  LLM_PROVIDER: z.preprocess((value) => (value === "" ? undefined : value), providerName.default("gemini")),
+  LLM_PROVIDER: z.preprocess((value) => (value === "" ? undefined : value), providerName.default("deepseek")),
   LLM_MODEL: optionalString,
   LLM_FALLBACK_PROVIDER: z.preprocess((value) => (value === "" ? undefined : value), providerName.optional()),
   LLM_FALLBACK_MODEL: optionalString,

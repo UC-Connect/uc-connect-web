@@ -92,17 +92,57 @@ The schema file includes tables, RLS policies, triggers, RPC functions, notifica
 
 `/admissions` summarizes UC first-year and transfer admission requirements from official UC pages. Each topic is a Markdown file in `content/admissions/docs/` with its source URL, applicable cycle, and last-reviewed date in frontmatter. The same files power the topic pages and the AI assistant at `/admissions/ask`.
 
-The assistant retrieves relevant sections with keyword scoring (with Chinese query terms mapped to English and an applicant-type filter), sends them to Gemini, and streams an answer that cites sources by number. It is instructed not to predict admission chances, guarantee eligibility, or invent course articulation.
+The assistant retrieves relevant sections with keyword scoring (with Chinese query terms mapped to English and an applicant-type filter), sends them to the configured chat model, and streams an answer that cites sources by number. It is instructed not to predict admission chances, guarantee eligibility, or invent course articulation.
 
-Environment variables (server-only):
+### Architecture
 
-```env
-LLM_PROVIDER=gemini            # gemini | mock
-LLM_MODEL=                     # optional; defaults to the provider's default model
-GEMINI_API_KEY=your_gemini_api_key
+```text
+app/admissions/ask (browser)
+  └─ POST /api/admissions/chat ─ NDJSON stream (meta → delta… → done)
+       ├─ lib/admissions/intents.ts   rule answers (dates, TAG campuses, fees), no model call
+       ├─ lib/admissions/cache.ts     pre-generated answers + Supabase cache (keyed by provider:model)
+       ├─ lib/admissions/quota.ts     shared rate limits
+       └─ lib/admissions/assistant.ts retrieval (retriever.ts) + prompt
+            └─ lib/llm  getChatProvider()
+                 ├─ config.ts      zod-validated LLM_* settings
+                 ├─ fallback.ts    switch to LLM_FALLBACK_PROVIDER before any text streams
+                 ├─ pricing.ts / usage.ts   cost estimate + one JSON usage log per answer
+                 └─ providers/     openai-compatible.ts (DeepSeek, OpenAI), gemini.ts, mock.ts
 ```
 
-Optional settings for running on the free Gemini tier:
+Only `lib/llm/providers/` may import vendor SDKs or contain vendor API URLs; an ESLint rule enforces this.
+
+### Choosing a model
+
+Set `LLM_PROVIDER` (and optionally `LLM_MODEL`); no code changes are needed. Only the selected providers' keys are required, and a missing or invalid setting fails the first request with a message naming the variable.
+
+```env
+LLM_PROVIDER=deepseek          # deepseek | openai | gemini | mock
+LLM_MODEL=                     # optional; defaults: deepseek-flash, gpt-6-luna, gemini-flash-lite-latest
+LLM_FALLBACK_PROVIDER=gemini   # optional backup when the primary fails before streaming
+DEEPSEEK_API_KEY=
+OPENAI_API_KEY=
+GEMINI_API_KEY=
+```
+
+Reasoning is turned off for these grounded answers: DeepSeek `thinking: disabled` (`DEEPSEEK_THINKING`) and OpenAI `reasoning_effort: none` (`OPENAI_REASONING_EFFORT`). After switching models, run `npm run admissions:prebuild` so the suggested questions have answers from the new model; until then they fall through to the model.
+
+To add a provider: implement `ChatProvider` (`lib/llm/types.ts`) in `lib/llm/providers/`, or reuse `OpenAICompatibleProvider` with a base URL if the vendor speaks the Chat Completions API. Add its name, default model, and key variable in `lib/llm/config.ts`, a `case` in `createChatProvider` (`lib/llm/index.ts`), prices in `lib/llm/pricing.ts`, and tests with a stubbed `fetch`.
+
+### Latest provider comparison
+
+`npm run eval:providers` on 2026-10-26 (52 questions, 8 in Chinese; full report in [`eval-results/2026-10-26.md`](eval-results/2026-10-26.md)):
+
+| Model | Accuracy | Valid citations | p50 / p95 latency | Cost per 1k answers |
+|---|---|---|---|---|
+| deepseek-flash (default) | 86.5% | 100% | 1.53 s / 2.53 s | $0.47 |
+| gemini-flash-lite-latest | 82.7% | 95.9% | 0.90 s / 2.14 s | $0.78 paid tier (free tier: $0, rate limited) |
+| gpt-6-luna | 82.7% | 100% | 1.42 s / 2.78 s | $0.19 |
+| gpt-5.4-nano (deprecated) | 82.7% | 100% | 1.55 s / 3.06 s | $0.50 |
+
+All four answered every Chinese question correctly. Accuracy uses a substring grader, and most failures are correct answers it misreads (for example "does not guarantee admission" contains the forbidden phrase "guarantee admission"), so the gaps between models are within grader noise. Cost and latency are the real differences. DeepSeek costs assume peak prices.
+
+Other environment variables:
 
 ```env
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key   # enables the answer cache and shared rate limits
@@ -124,7 +164,8 @@ Evaluation and tests:
 ```bash
 npm test                 # rules, calculators, and rule-based answers
 npm run eval:retrieval   # offline: checks that expected sources are retrieved
-npm run eval:agent       # calls Gemini for every test question; paced for the free tier
+npm run eval:agent       # calls the configured model for every test question
+npm run eval:providers -- --providers deepseek,gemini,openai,openai:gpt-5.4-nano   # side-by-side report in eval-results/
 ```
 
 Yearly maintenance: update the two dates documents (`freshman-dates-and-deadlines.md`, `uc-dates-and-deadlines.md`), bump `last_reviewed` on any re-checked topic, update `lib/admissions/presentation.ts` highlights if a requirement changes, then run `npm run admissions:prebuild`.
@@ -155,10 +196,12 @@ Yearly maintenance: update the two dates documents (`freshman-dates-and-deadline
 app/page.tsx             Main product UI and client workflow logic
 app/admissions/          UC admissions guide, topic pages, calculators, and AI assistant UI
 app/api/admissions/chat  Streaming admissions assistant API
-lib/admissions/          Knowledge-base loader, retriever, Gemini client, rate limiter
+lib/admissions/          Knowledge-base loader, retriever, assistant, rules, cache, rate limits
+lib/llm/                 Model provider layer (DeepSeek, OpenAI, Gemini, mock), fallback, pricing, usage logs
 content/admissions/      Admissions knowledge base (Markdown), system prompt, eval questions
-scripts/admissions/      Retrieval/answer evaluation and answer pre-generation scripts
-tests/admissions/        Unit tests for admission rules and rule-based answers
+scripts/admissions/      Retrieval/answer/provider evaluation and answer pre-generation scripts
+eval-results/            Provider comparison reports (.md, .csv)
+tests/                   Unit tests (rules, rule answers, LLM providers, eval reports); no network calls
 app/tasks/[id]/page.tsx  Shareable task detail route
 app/globals.css          App styling
 lib/supabase.ts          Supabase client and shared types
@@ -181,6 +224,7 @@ npm test
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: lint, typecheck, unit tests, the offline retrieval eval (fails below 50/51 matched), and a production build. It makes no model calls.
+- **Provider eval** (`.github/workflows/eval.yml`) runs only when started by hand from the Actions tab, because it calls paid APIs. It needs `DEEPSEEK_API_KEY`, `OPENAI_API_KEY`, and `GEMINI_API_KEY` repository secrets and uploads the report as an artifact.
 - **CD** is Vercel's Git integration: every pull request gets a preview deployment, and `main` deploys to production.
 
 ## Project Notes
