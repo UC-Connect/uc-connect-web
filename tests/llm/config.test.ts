@@ -4,6 +4,7 @@ import { loadLLMConfig } from "../../lib/llm/config.ts";
 import { createChatProvider } from "../../lib/llm/index.ts";
 import { LLMError } from "../../lib/llm/errors.ts";
 import { GeminiProvider } from "../../lib/llm/providers/gemini.ts";
+import { OpenAICompatibleProvider } from "../../lib/llm/providers/openai-compatible.ts";
 import { MockProvider } from "../../lib/llm/providers/mock.ts";
 
 describe("loadLLMConfig", () => {
@@ -21,6 +22,17 @@ describe("loadLLMConfig", () => {
 
   it("rejects unknown provider names", () => {
     assert.throws(() => loadLLMConfig({ LLM_PROVIDER: "claude" }), /LLM_PROVIDER/);
+  });
+
+  it("supports DeepSeek and OpenAI with their default models and reasoning off", () => {
+    const deepseek = loadLLMConfig({ LLM_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "d" });
+    assert.deepEqual(deepseek.primary, { provider: "deepseek", model: "deepseek-flash", apiKey: "d" });
+    assert.equal(deepseek.deepseekThinking, "disabled");
+    const openai = loadLLMConfig({ LLM_PROVIDER: "openai", OPENAI_API_KEY: "o", LLM_MODEL: "gpt-5.4-nano" });
+    assert.equal(openai.primary.model, "gpt-5.4-nano");
+    assert.equal(openai.openaiReasoningEffort, "none");
+    assert.throws(() => loadLLMConfig({ LLM_PROVIDER: "deepseek" }), /DEEPSEEK_API_KEY/);
+    assert.throws(() => loadLLMConfig({ LLM_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "d", DEEPSEEK_THINKING: "maybe" }), /DEEPSEEK_THINKING/);
   });
 
   it("does not require keys for unused providers", () => {
@@ -50,9 +62,13 @@ describe("loadLLMConfig", () => {
 });
 
 describe("createChatProvider", () => {
-  const settings = { timeoutMs: 1000, maxAttempts: 1 };
+  const settings = { timeoutMs: 1000, maxAttempts: 1, deepseekThinking: "disabled", openaiReasoningEffort: "none" } as const;
 
   it("returns the provider for each configured name", () => {
+    const deepseek = createChatProvider({ provider: "deepseek", model: "deepseek-flash", apiKey: "k" }, settings);
+    assert.ok(deepseek instanceof OpenAICompatibleProvider);
+    assert.equal(deepseek.name, "deepseek");
+    assert.equal(createChatProvider({ provider: "openai", model: "gpt-6-luna", apiKey: "k" }, settings).name, "openai");
     assert.ok(createChatProvider({ provider: "gemini", model: "gemini-flash-lite-latest", apiKey: "k" }, settings) instanceof GeminiProvider);
     assert.ok(createChatProvider({ provider: "mock", model: "mock", apiKey: "" }, settings) instanceof MockProvider);
   });
