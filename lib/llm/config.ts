@@ -43,7 +43,8 @@ const envSchema = z.object({
   LLM_FALLBACK_MODEL: optionalString,
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
   LLM_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(800),
-  LLM_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(3),
+  // Attempts per provider before failing or switching to the fallback (2 = one retry).
+  LLM_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(2),
   DEEPSEEK_API_KEY: optionalString,
   OPENAI_API_KEY: optionalString,
   GEMINI_API_KEY: optionalString,

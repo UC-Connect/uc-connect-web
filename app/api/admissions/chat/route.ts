@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { AssistantError, retrieveForConversation, streamAnswer, type AnswerEvent, type ChatTurn } from "@/lib/admissions/assistant";
 import { findCachedAnswer, findPrebuiltAnswer, storeCachedAnswer, type CachedAnswer } from "@/lib/admissions/cache";
 import { answerWithRules } from "@/lib/admissions/intents";
+import { getModelIdentity, logUsage } from "@/lib/llm";
 import { consumeModelQuota } from "@/lib/admissions/quota";
 import { checkRateLimit } from "@/lib/admissions/rate-limit";
 
@@ -107,6 +108,7 @@ export async function POST(request: Request) {
   const rule = answerWithRules(question, audience);
 
   if (rule) {
+    logUsage({ source: "rules" });
     return streamResponse(async (send) => {
       send({ type: "meta", sources: rule.sources, audience, model: "", rule: rule.intent });
       send({ type: "delta", text: rule.answer });
@@ -116,10 +118,13 @@ export async function POST(request: Request) {
 
   // Suggested questions are standalone, so their pre-generated answers apply even mid-conversation.
   // Other answers are cached only for standalone questions; follow-ups depend on the conversation.
+  const identity = getModelIdentity();
   const cacheable = history.length === 0;
-  const cached = findPrebuiltAnswer(question) ?? (cacheable ? await findCachedAnswer(question, audience) : null);
+  const prebuilt = findPrebuiltAnswer(question, identity);
+  const cached = prebuilt ?? (cacheable && identity ? await findCachedAnswer(question, audience, identity) : null);
 
   if (cached) {
+    logUsage({ source: prebuilt ? "prebuilt" : "cache", provider: cached.provider, model: cached.model });
     return streamResponse(async (send) => sendCached(send, cached));
   }
 
@@ -140,17 +145,21 @@ export async function POST(request: Request) {
 
   return streamResponse(async (send) => {
     let meta: Extract<AnswerEvent, { type: "meta" }> | undefined;
+    let done: Extract<AnswerEvent, { type: "done" }> | undefined;
     let answer = "";
 
     try {
       for await (const event of streamAnswer({ question, history, audience, signal: request.signal })) {
         if (event.type === "meta") meta = event;
         if (event.type === "delta") answer += event.text;
+        if (event.type === "done") done = event;
         send(event);
       }
 
-      if (cacheable && meta && answer) {
-        await storeCachedAnswer({ question, audience, answer, sources: meta.sources, model: meta.model });
+      logUsage({ source: "model", provider: done?.provider, model: done?.model, usage: done?.usage, latencyMs: done?.latencyMs, fallback: done?.fallback });
+
+      if (cacheable && meta && done?.provider && done.model && answer) {
+        await storeCachedAnswer({ question, audience, answer, sources: meta.sources, provider: done.provider, model: done.model });
       }
     } catch (error) {
       if (!request.signal.aborted) {

@@ -23,6 +23,8 @@ export interface ChatResult {
   provider: string;
   model: string;
   latencyMs: number;
+  // True when the fallback provider produced this result.
+  fallback?: boolean;
 }
 
 export type StreamOptions = ChatOptions & { onDone?: (result: Omit<ChatResult, "text">) => void };
