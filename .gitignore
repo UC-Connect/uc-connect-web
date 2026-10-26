@@ -7,3 +7,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.tsbuildinfo
+
+# Full per-question eval output (large); the .md and .csv summaries are committed.
+eval-results/*-details.json

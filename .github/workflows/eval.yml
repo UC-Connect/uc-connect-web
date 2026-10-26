@@ -1,0 +1,47 @@
+name: Provider eval
+
+# Calls paid model APIs, so it only runs when started by hand from the Actions tab.
+on:
+  workflow_dispatch:
+    inputs:
+      providers:
+        description: "Comma-separated providers, each optionally provider:model"
+        default: "deepseek,gemini,openai,openai:gpt-5.4-nano"
+        required: true
+      limit:
+        description: "Only run the first N questions (blank = all)"
+        default: ""
+        required: false
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Compare providers
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PROVIDERS: ${{ inputs.providers }}
+          LIMIT: ${{ inputs.limit }}
+        run: npm run eval:providers -- --providers "$PROVIDERS" ${LIMIT:+--limit "$LIMIT"}
+
+      - name: Add the report to the run summary
+        if: always()
+        run: cat eval-results/*.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: eval-results/

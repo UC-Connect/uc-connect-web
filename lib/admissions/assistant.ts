@@ -25,6 +25,9 @@ type AnswerOptions = {
   history?: ChatTurn[];
   audience?: Exclude<Audience, "all"> | null;
   signal?: AbortSignal;
+  // Evaluation scripts pass a provider and token limit; the app uses the configured ones.
+  provider?: ChatProvider;
+  maxTokens?: number;
 };
 
 const FOLLOW_UP_MIN_TOKENS = 4;
@@ -84,11 +87,13 @@ function toAssistantError(error: unknown): unknown {
   return error;
 }
 
-export async function* streamAnswer({ question, history = [], audience = null, signal }: AnswerOptions): AsyncGenerator<AnswerEvent> {
+export async function* streamAnswer({ question, history = [], audience = null, signal, ...overrides }: AnswerOptions): AsyncGenerator<AnswerEvent> {
   let provider: ChatProvider;
+  let maxTokens: number;
 
   try {
-    provider = getChatProvider();
+    provider = overrides.provider ?? getChatProvider();
+    maxTokens = overrides.maxTokens ?? getLLMConfig().maxOutputTokens;
   } catch (error) {
     throw toAssistantError(error);
   }
@@ -116,7 +121,7 @@ export async function* streamAnswer({ question, history = [], audience = null, s
   let result: Omit<ChatResult, "text"> | undefined;
 
   try {
-    const options = { temperature: 0.2, maxTokens: getLLMConfig().maxOutputTokens, signal, onDone: (done: Omit<ChatResult, "text">) => (result = done) };
+    const options = { temperature: 0.2, maxTokens, signal, onDone: (done: Omit<ChatResult, "text">) => (result = done) };
 
     for await (const text of provider.stream(messages, options)) {
       yield { type: "delta", text };
