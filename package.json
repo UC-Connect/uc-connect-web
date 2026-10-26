@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/admissions/*.test.ts",
     "eval:retrieval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/admissions/eval-retrieval.ts",
     "eval:agent": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/eval-agent.ts",
-    "admissions:prebuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/prebuild-answers.ts",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/admissions/*.test.ts"
+    "admissions:prebuild": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local scripts/admissions/prebuild-answers.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.76.0",
@@ -24,6 +26,8 @@
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3"
   }

@@ -4,6 +4,14 @@ All notable updates to UC Connect are recorded here.
 
 UC Connect 的重要更新都会记录在这里。
 
+## Unreleased
+
+### Added / 新增
+- Added GitHub Actions CI for pull requests and `main`: lint, typecheck, unit tests, a retrieval eval threshold, and a production build.
+  新增 GitHub Actions CI，覆盖 PR 和 `main`：代码检查、类型检查、单元测试、检索评测阈值和生产构建。
+- Added ESLint with the Next.js config and `lint` / `typecheck` scripts.
+  新增 ESLint（Next.js 配置）以及 `lint`、`typecheck` 脚本。
+
 ## v0.3.0 - 2026-10-14
 
 ### Added / 新增

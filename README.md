@@ -172,7 +172,15 @@ CHANGELOG.md            Product and technical change log
 npm run dev
 npm run build
 npm run start
+npm run lint
+npm run typecheck
+npm test
 ```
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`: lint, typecheck, unit tests, the offline retrieval eval (fails below 50/51 matched), and a production build. It makes no model calls.
+- **CD** is Vercel's Git integration: every pull request gets a preview deployment, and `main` deploys to production.
 
 ## Project Notes
 
