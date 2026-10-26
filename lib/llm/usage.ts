@@ -3,7 +3,7 @@ import type { TokenUsage } from "./types.ts";
 
 export type UsageRecord = {
   // "model" for a model call; the cache sources record answers served without one.
-  source: "model" | "rules" | "prebuilt" | "cache";
+  source: "model" | "rules" | "prebuilt" | "cache" | "out_of_scope";
   provider?: string;
   model?: string;
   usage?: TokenUsage;
@@ -24,7 +24,7 @@ export function logUsage(record: UsageRecord) {
       event: "llm_usage",
       at: new Date().toISOString(),
       source: record.source,
-      cacheHit: record.source !== "model",
+      cacheHit: record.source === "prebuilt" || record.source === "cache",
       provider: record.provider ?? null,
       model: record.model ?? null,
       inputTokens: record.usage?.inputTokens ?? null,

@@ -39,6 +39,8 @@ const STOPWORDS = new Set([
 
 const QUERY_EXPANSIONS: Record<string, string[]> = {
   act: ["standardized", "test"],
+  apply: ["application"],
+  applying: ["application"],
   articulate: ["articulation", "articulated", "equivalency", "assist"],
   articulates: ["articulation", "articulated", "equivalency", "assist"],
   articulated: ["articulation", "equivalency", "assist"],
@@ -104,6 +106,10 @@ const CHINESE_TERMS: [string, string][] = [
   ["前9%", "top 9 percent elc statewide guarantee"],
   ["前百分之九", "top 9 percent elc statewide guarantee"],
   ["要求", "requirements"],
+  ["申请", "application"],
+  ["需要什么", "requirements"],
+  ["选校", "campuses"],
+  ["哪个学校", "campuses"],
   ["最低", "minimum"],
   ["多少分", "minimum score"],
   ["条件", "requirements eligibility"],

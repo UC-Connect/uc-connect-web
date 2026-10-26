@@ -28,6 +28,8 @@ type AnswerOptions = {
   // Evaluation scripts pass a provider and token limit; the app uses the configured ones.
   provider?: ChatProvider;
   maxTokens?: number;
+  // The chat API retrieves first (to skip out-of-scope questions) and passes the result in.
+  retrieval?: Retrieval;
 };
 
 const FOLLOW_UP_MIN_TOKENS = 4;
@@ -88,6 +90,25 @@ function toAssistantError(error: unknown): unknown {
   return error;
 }
 
+export function buildMessages(question: string, history: ChatTurn[], retrieval: Retrieval): ChatMessage[] {
+  const replyLanguage = /[\u3400-\u9fff]/.test(question) ? "Simplified Chinese" : "English";
+  const userPrompt = [
+    `Reply language: ${replyLanguage}`,
+    "",
+    "User question:",
+    question,
+    "",
+    "Retrieved UC Connect knowledge-base sources (cite them by their bracketed number):",
+    buildContext(retrieval),
+  ].join("\n");
+
+  return [
+    { role: "system", content: loadSystemPrompt() },
+    ...history.map((turn) => ({ role: turn.role, content: turn.content })),
+    { role: "user", content: userPrompt },
+  ];
+}
+
 export async function* streamAnswer({ question, history = [], audience = null, signal, ...overrides }: AnswerOptions): AsyncGenerator<AnswerEvent> {
   let provider: ChatProvider;
   let maxTokens: number;
@@ -99,25 +120,11 @@ export async function* streamAnswer({ question, history = [], audience = null, s
     throw toAssistantError(error);
   }
 
-  const retrieval = retrieveForConversation(question, history, audience);
+  const retrieval = overrides.retrieval ?? retrieveForConversation(question, history, audience);
 
   yield { type: "meta", sources: retrieval.sources, audience: retrieval.audience, model: provider.model, provider: provider.name };
 
-  const replyLanguage = /[\u3400-\u9fff]/.test(question) ? "Simplified Chinese" : "English";
-  const userPrompt = [
-    `Reply language: ${replyLanguage}`,
-    "",
-    "User question:",
-    question,
-    "",
-    "Retrieved UC Connect knowledge-base sources (cite them by their bracketed number):",
-    buildContext(retrieval),
-  ].join("\n");
-  const messages: ChatMessage[] = [
-    { role: "system", content: loadSystemPrompt() },
-    ...history.map((turn) => ({ role: turn.role, content: turn.content })),
-    { role: "user", content: userPrompt },
-  ];
+  const messages = buildMessages(question, history, retrieval);
 
   let result: Omit<ChatResult, "text"> | undefined;
 

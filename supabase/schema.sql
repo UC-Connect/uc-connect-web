@@ -915,6 +915,54 @@ as $$
   where cache_key = p_cache_key;
 $$;
 
+-- Estimated model spend per fixed window, in micro-yuan (1/1,000,000 CNY), for the daily budget.
+create table if not exists public.admissions_spend (
+  bucket text not null,
+  window_start timestamptz not null,
+  amount bigint not null default 0,
+  primary key (bucket, window_start)
+);
+
+alter table public.admissions_spend enable row level security;
+revoke all on public.admissions_spend from anon, authenticated;
+
+create or replace function public.admissions_spend_status(p_bucket text, p_window_seconds integer)
+returns bigint
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(sum(amount), 0)::bigint
+  from public.admissions_spend
+  where bucket = p_bucket
+    and window_start = to_timestamp(floor(extract(epoch from now()) / p_window_seconds) * p_window_seconds);
+$$;
+
+create or replace function public.admissions_add_spend(p_bucket text, p_window_seconds integer, p_amount bigint)
+returns bigint
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total bigint;
+begin
+  insert into public.admissions_spend (bucket, window_start, amount)
+  values (p_bucket, to_timestamp(floor(extract(epoch from now()) / p_window_seconds) * p_window_seconds), greatest(p_amount, 0))
+  on conflict (bucket, window_start)
+  do update set amount = public.admissions_spend.amount + greatest(excluded.amount, 0)
+  returning amount into v_total;
+
+  return v_total;
+end;
+$$;
+
+revoke execute on function public.admissions_spend_status(text, integer) from public, anon, authenticated;
+revoke execute on function public.admissions_add_spend(text, integer, bigint) from public, anon, authenticated;
+grant execute on function public.admissions_spend_status(text, integer) to service_role;
+grant execute on function public.admissions_add_spend(text, integer, bigint) to service_role;
+grant select, insert, update on public.admissions_spend to service_role;
+
 revoke execute on function public.admissions_consume_quota(text[], integer[], integer[]) from public, anon, authenticated;
 revoke execute on function public.admissions_record_cache_hit(text) from public, anon, authenticated;
 grant execute on function public.admissions_consume_quota(text[], integer[], integer[]) to service_role;
