@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { AssistantError, buildMessages, retrieveForConversation, streamAnswer, type AnswerEvent } from "../../../../lib/admissions/assistant.ts";
 import { authenticate } from "../../../../lib/admissions/auth.ts";
+import { isBlocked, recordViolation } from "../../../../lib/admissions/blocklist.ts";
 import { findCachedAnswer, findPrebuiltAnswer, storeCachedAnswer } from "../../../../lib/admissions/cache.ts";
 import { estimateTokens, LIMITS, sanitizeHistory, signAnswer } from "../../../../lib/admissions/guards.ts";
 import { answerWithRules } from "../../../../lib/admissions/intents.ts";
@@ -24,6 +25,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   TIMEOUT: "回答超时，请重试，也可以先看下面的相关专题。/ The answer timed out. Try again, or read the related topics below.",
   DAILY_LIMIT: "今天的 AI 额度已用完，明天再来，也可以先看下面的相关专题。/ Today's AI quota is used up. Come back tomorrow, or read the related topics below.",
   CLIENT_LIMIT: "提问太频繁，请稍后再试。/ Too many questions. Please wait a moment.",
+  BLOCKED: "由于短时间内请求过多，你的 AI 助手使用已暂停 24 小时。/ The assistant is paused for 24 hours because of too many requests.",
   LOGIN_REQUIRED: "请先登录后再使用 AI 助手。/ Please log in to use the assistant.",
   STREAM_IN_PROGRESS: "上一个回答还在生成，请稍等。/ Your previous answer is still being written.",
   INPUT_TOO_LONG: "这次对话太长了，请开始新对话再问。/ This conversation is too long; please start a new chat.",
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
   const burst = checkRateLimit(client);
 
   if (!burst.allowed) {
+    await recordViolation(`ip:${client}`);
     return Response.json({ error: ERROR_MESSAGES.CLIENT_LIMIT }, { status: 429, headers: { "Retry-After": String(burst.retryAfterSeconds) } });
   }
 
@@ -121,6 +124,11 @@ export async function POST(request: Request) {
   }
 
   const userId = auth.user?.id ?? null;
+  const subjects = [`ip:${client}`, ...(userId ? [`user:${userId}`] : [])];
+
+  if (await isBlocked(subjects)) {
+    return Response.json({ error: ERROR_MESSAGES.BLOCKED, code: "BLOCKED" }, { status: 403 });
+  }
 
   let body: { question?: unknown; history?: unknown; audience?: unknown };
 
@@ -193,6 +201,7 @@ export async function POST(request: Request) {
 
   if (!quota.allowed) {
     if (quota.reason === "client") {
+      await recordViolation(subjects.at(-1) as string);
       return Response.json({ error: ERROR_MESSAGES.CLIENT_LIMIT }, { status: 429 });
     }
 
